@@ -1,0 +1,280 @@
+<!--begin::Row-->
+<div class="row g-5 g-xl-8">
+  <!-- Tarjeta: Total Sesiones -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-flush bgi-no-repeat bgi-size-contain bgi-position-x-end h-xl-100"
+         style="background-color: #F1416C; background-image: url('assets/media/svg/shapes/wave-bg-red.svg')">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-white me-2 lh-1 ls-n2">
+            {{ stats()?.totalSesiones ?? 0 }}
+          </span>
+          <span class="text-white opacity-75 fw-semibold fs-6">Total Sesiones</span>
+        </div>
+      </div>
+      <div class="card-body d-flex align-items-end pt-0">
+        <div class="d-flex align-items-center flex-column mt-3 w-100">
+          <div class="d-flex justify-content-between fw-bold fs-6 text-white opacity-75 w-100 mt-auto mb-2">
+            <span>Activas</span>
+            <span>{{ stats()?.activas ?? 0 }}</span>
+          </div>
+          <div class="h-8px mx-3 w-100 bg-white bg-opacity-50 rounded">
+            <div class="bg-white rounded h-8px" role="progressbar"
+                 [style.width.%]="stats() ? (stats()!.activas / stats()!.totalSesiones * 100) : 0">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjeta: Sesiones Activas -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-flush bgi-no-repeat bgi-size-contain bgi-position-x-end h-xl-100"
+         style="background-color: #7239EA; background-image: url('assets/media/svg/shapes/wave-bg-purple.svg')">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-white me-2 lh-1 ls-n2">
+            {{ stats()?.activas ?? 0 }}
+          </span>
+          <span class="text-white opacity-75 fw-semibold fs-6">Sesiones Activas</span>
+        </div>
+      </div>
+      <div class="card-body d-flex align-items-end pt-0">
+        <div class="d-flex align-items-center flex-column mt-3 w-100">
+          <div class="d-flex justify-content-between fw-bold fs-6 text-white opacity-75 w-100 mt-auto mb-2">
+            <span>Archivadas</span>
+            <span>{{ stats()?.archivadas ?? 0 }}</span>
+          </div>
+          <div class="h-8px mx-3 w-100 bg-white bg-opacity-50 rounded">
+            <div class="bg-white rounded h-8px" role="progressbar"
+                 [style.width.%]="stats() ? (stats()!.archivadas / stats()!.totalSesiones * 100) : 0">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjeta: Con Respaldo -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-flush bgi-no-repeat bgi-size-contain bgi-position-x-end h-xl-100"
+         style="background-color: #50CD89; background-image: url('assets/media/svg/shapes/wave-bg-green.svg')">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-white me-2 lh-1 ls-n2">
+            {{ stats()?.conRespaldo ?? 0 }}
+          </span>
+          <span class="text-white opacity-75 fw-semibold fs-6">Con Respaldo</span>
+        </div>
+      </div>
+      <div class="card-body d-flex align-items-end pt-0">
+        <div class="d-flex align-items-center flex-column mt-3 w-100">
+          <div class="d-flex justify-content-between fw-bold fs-6 text-white opacity-75 w-100 mt-auto mb-2">
+            <span>Pendientes</span>
+            <span>{{ (stats()?.totalSesiones ?? 0) - (stats()?.conRespaldo ?? 0) }}</span>
+          </div>
+          <div class="h-8px mx-3 w-100 bg-white bg-opacity-50 rounded">
+            <div class="bg-white rounded h-8px" role="progressbar"
+                 [style.width.%]="stats() ? (stats()!.conRespaldo / stats()!.totalSesiones * 100) : 0">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjeta: Email Enviado -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-flush bgi-no-repeat bgi-size-contain bgi-position-x-end h-xl-100"
+         style="background-color: #009EF7; background-image: url('assets/media/svg/shapes/wave-bg-blue.svg')">
+      <div class="card-header pt-5">
+        <div class="card-title d-flex flex-column">
+          <span class="fs-2hx fw-bold text-white me-2 lh-1 ls-n2">
+            {{ stats()?.conEmailEnviado ?? 0 }}
+          </span>
+          <span class="text-white opacity-75 fw-semibold fs-6">Emails Enviados</span>
+        </div>
+      </div>
+      <div class="card-body d-flex align-items-end pt-0">
+        <div class="d-flex align-items-center flex-column mt-3 w-100">
+          <div class="d-flex justify-content-between fw-bold fs-6 text-white opacity-75 w-100 mt-auto mb-2">
+            <span>Pendientes</span>
+            <span>{{ (stats()?.totalSesiones ?? 0) - (stats()?.conEmailEnviado ?? 0) }}</span>
+          </div>
+          <div class="h-8px mx-3 w-100 bg-white bg-opacity-50 rounded">
+            <div class="bg-white rounded h-8px" role="progressbar"
+                 [style.width.%]="stats() ? (stats()!.conEmailEnviado / stats()!.totalSesiones * 100) : 0">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--end::Row-->
+
+<!--begin::Row: Espacio Nextcloud + Acciones -->
+<div class="row g-5 g-xl-8 mt-5">
+  <!-- Cuota Nextcloud -->
+  <div class="col-xl-6">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bold text-gray-800">Espacio en Nextcloud</span>
+          <span class="text-gray-500 mt-1 fw-semibold fs-7">Nube Privada Sala Plena</span>
+        </h3>
+        <div class="card-toolbar">
+          @if (espacioBajo()) {
+            <span class="badge badge-light-danger fs-base">
+              <i class="ki-duotone ki-information fs-5 text-danger ms-n1"><span class="path1"></span><span class="path2"></span></i>
+              Espacio bajo
+            </span>
+          }
+        </div>
+      </div>
+      <div class="card-body pt-5">
+        @if (loadingStats()) {
+          <div class="d-flex justify-content-center py-10">
+            <span class="spinner-border spinner-border-lg text-primary"></span>
+          </div>
+        } @else if (stats()) {
+          <div class="d-flex flex-column">
+            <!-- Barra de progreso -->
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-gray-700 fw-semibold">Usado</span>
+              <span class="text-gray-800 fw-bold">
+                {{ formatNumber(stats()!.espacioNextcloud.usadoMb) }} MB
+              </span>
+            </div>
+            <div class="progress h-20px mb-5">
+              <div class="progress-bar"
+                   [class.bg-success]="stats()!.espacioNextcloud.librePercent >= 50"
+                   [class.bg-warning]="stats()!.espacioNextcloud.librePercent >= 20 && stats()!.espacioNextcloud.librePercent < 50"
+                   [class.bg-danger]="stats()!.espacioNextcloud.librePercent < 20"
+                   role="progressbar"
+                   [style.width.%]="100 - stats()!.espacioNextcloud.librePercent">
+              </div>
+            </div>
+
+            <div class="row g-5">
+              <div class="col-6">
+                <div class="d-flex align-items-center">
+                  <div class="symbol symbol-40px me-3">
+                    <div class="symbol-label bg-light-success">
+                      <i class="ki-duotone ki-cloud fs-2 text-success"><span class="path1"></span><span class="path2"></span></i>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="text-gray-800 fw-bold fs-5">
+                      @if (espacioIlimitado()) {
+                        Ilimitado
+                      } @else {
+                        {{ formatNumber(stats()!.espacioNextcloud.libreMb) }} MB
+                      }
+                    </div>
+                    <div class="text-gray-500 fs-7">Libre</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="d-flex align-items-center">
+                  <div class="symbol symbol-40px me-3">
+                    <div class="symbol-label bg-light-primary">
+                      <i class="ki-duotone ki-percentage fs-2 text-primary"><span class="path1"></span><span class="path2"></span></i>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="text-gray-800 fw-bold fs-5">
+                      {{ stats()!.espacioNextcloud.librePercent }}%
+                    </div>
+                    <div class="text-gray-500 fs-7">Libre</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Acciones rápidas + Última rotación -->
+  <div class="col-xl-6">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bold text-gray-800">Acciones Rápidas</span>
+          <span class="text-gray-500 mt-1 fw-semibold fs-7">Gestión del sistema</span>
+        </h3>
+      </div>
+      <div class="card-body pt-5">
+        <div class="d-flex flex-column gap-4">
+          <button class="btn btn-primary w-100" (click)="onNuevaSesion()">
+            <i class="ki-duotone ki-plus fs-2 me-2"><span class="path1"></span><span class="path2"></span></i>
+            Crear Nueva Sesión
+          </button>
+          <button class="btn btn-light-warning w-100"
+                  [disabled]="executingRotation()"
+                  (click)="ejecutarRotacion()">
+            @if (executingRotation()) {
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Ejecutando...
+            } @else {
+              <i class="ki-duotone ki-arrows-circle fs-2 me-2"><span class="path1"></span><span class="path2"></span></i>
+              Ejecutar Rotación Manual
+            }
+          </button>
+
+          @if (stats()?.ultimaRotacion) {
+            <div class="notice bg-light-primary rounded border-primary border border-dashed p-4">
+              <div class="d-flex align-items-center">
+                <i class="ki-duotone ki-calendar-tick fs-2x text-primary me-3"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                <div>
+                  <div class="text-gray-800 fw-bold">Última Rotación</div>
+                  <div class="text-gray-600 fs-7">
+                    {{ formatFecha(stats()!.ultimaRotacion!.fecha) }} —
+                    {{ stats()!.ultimaRotacion!.archivadas }} sesiones archivadas —
+                    {{ stats()!.ultimaRotacion!.espacioLiberado }} MB liberados
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!--end::Row-->
+
+<!--begin::Row: Tabla de últimas sesiones -->
+<div class="row g-5 g-xl-8 mt-5">
+  <div class="col-12">
+    <div class="card card-flush h-xl-100">
+      <div class="card-header pt-7">
+        <h3 class="card-title align-items-start flex-column">
+          <span class="card-label fw-bold text-gray-800">Últimas Sesiones Activas</span>
+          <span class="text-gray-500 mt-1 fw-semibold fs-7">Sesiones recientes publicadas</span>
+        </h3>
+        <div class="card-toolbar">
+          <button class="btn btn-sm btn-light-primary" (click)="cargarDashboard()">
+            <i class="ki-duotone ki-arrows-circle fs-3"><span class="path1"></span><span class="path2"></span></i>
+            Actualizar
+          </button>
+        </div>
+      </div>
+      <div class="card-body pt-0">
+        <app-tabla-generica
+          [data]="ultimasSesiones()"
+          [tablaColumns]="columns"
+          [tablaOpciones]="tablaOpciones"
+          [loading]="loadingSesiones()"
+          (btnNuevo)="onNuevaSesion()"
+          (btnTableAction)="onTableAction($event)">
+        </app-tabla-generica>
+      </div>
+    </div>
+  </div>
+</div>
+<!--end::Row-->

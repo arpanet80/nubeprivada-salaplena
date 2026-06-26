@@ -1,0 +1,43 @@
+/* Notificaciones - Keen Theme */
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.bg-hover-light:hover {
+  background-color: #212e48 !important;
+}
+
+/* Lista de sesiones */
+.d-flex.align-items-center.p-3.rounded.border {
+  transition: all 0.2s ease;
+}
+
+.d-flex.align-items-center.p-3.rounded.border:hover {
+  border-color: #009ef7 !important;
+}
+
+/* Textarea mensaje */
+textarea.form-control-solid {
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  resize: none;
+}
+
+/* Badge pequeño */
+.badge.fs-8 {
+  font-size: 0.7rem !important;
+}
+
+/* Symbol */
+.symbol-40px {
+  width: 40px;
+  height: 40px;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .text-truncate {
+    max-width: 100% !important;
+  }
+}

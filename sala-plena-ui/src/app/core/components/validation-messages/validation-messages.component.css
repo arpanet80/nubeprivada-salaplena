@@ -1,0 +1,332 @@
+/* ============================================
+   ESTILOS DE VALIDACIÓN COMPATIBLES CON KEEN
+   ============================================ */
+
+/* Contenedor de campo con validación */
+.fv-row {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+/* Input base - Compatible con Keen */
+.form-control {
+  transition: all 0.3s ease;
+  border: 1px solid var(--bs-gray-300);
+  padding: 0.775rem 1rem;
+  font-size: 1.075rem;
+  font-weight: 500;
+  color: var(--bs-gray-700);
+}
+
+.form-control:focus {
+  border-color: var(--bs-primary);
+  box-shadow: none;
+  outline: none;
+  background-color: var(--bs-light-primary);
+}
+
+/* Estados de validación del input - Colores de Keen */
+.form-control.ng-touched.ng-invalid {
+  border-color: var(--bs-danger);
+  background-color: var(--bs-light-danger);
+  padding-right: 2.5rem;
+}
+
+.form-control.ng-touched.ng-valid {
+  border-color: var(--bs-success);
+  background-color: var(--bs-light-success);
+  padding-right: 2.5rem;
+}
+
+/* Iconos de validación en el input */
+.fv-row::after {
+  content: '';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* Icono de error - Keen style */
+.fv-row.has-error::after {
+  content: '✕';
+  color: var(--bs-danger);
+  font-weight: 600;
+  font-size: 1.1rem;
+  opacity: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icono de éxito - Keen style */
+.fv-row.has-success::after {
+  content: '✓';
+  color: var(--bs-success);
+  font-weight: 600;
+  font-size: 1.1rem;
+  opacity: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mensaje de error estilo Keen */
+.field-error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--bs-light-danger);
+  border-left: 3px solid var(--bs-danger);
+  border-radius: 0.475rem;
+  font-size: 0.925rem;
+  font-weight: 500;
+  color: var(--bs-danger);
+  animation: slideDown 0.3s ease;
+}
+
+.field-error-message::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: var(--bs-danger);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM7 4h2v5H7V4zm0 6h2v2H7v-2z'/%3E%3C/svg%3E") no-repeat center;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM7 4h2v5H7V4zm0 6h2v2H7v-2z'/%3E%3C/svg%3E") no-repeat center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+/* Mensaje de éxito estilo Keen (opcional) */
+.field-success-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--bs-light-success);
+  border-left: 3px solid var(--bs-success);
+  border-radius: 0.475rem;
+  font-size: 0.925rem;
+  font-weight: 500;
+  color: var(--bs-success);
+  animation: slideDown 0.3s ease;
+}
+
+.field-success-message::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: var(--bs-success);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3E%3C/svg%3E") no-repeat center;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3E%3C/svg%3E") no-repeat center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+/* Mensaje de error global - Keen Alert Style */
+.global-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  background-color: var(--bs-light-danger);
+  border: 1px solid var(--bs-danger);
+  border-left: 4px solid var(--bs-danger);
+  border-radius: 0.475rem;
+  color: var(--bs-danger);
+  font-size: 0.95rem;
+  font-weight: 500;
+  animation: slideDown 0.3s ease;
+}
+
+.global-error-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.global-error-content {
+  flex: 1;
+}
+
+.global-error-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+  color: var(--bs-danger);
+}
+
+.global-error-message {
+  font-weight: 500;
+  color: var(--bs-danger);
+  opacity: 0.85;
+}
+
+/* Animación de entrada */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para campos específicos con error */
+.fv-row.has-error .form-control {
+  border-color: var(--bs-danger);
+  background-color: var(--bs-light-danger);
+}
+
+.fv-row.has-success .form-control {
+  border-color: var(--bs-success);
+  background-color: var(--bs-light-success);
+}
+
+/* Ajuste para el input de password */
+.fv-row.has-error input[type="password"],
+.fv-row.has-success input[type="password"] {
+  padding-right: 2.5rem;
+}
+
+/* Loading spinner compatible con Keen */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Botón deshabilitado compatible con Keen */
+.btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Estados hover - Keen style */
+.field-error-message:hover {
+  background-color: var(--bs-light-danger);
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .field-error-message,
+  .global-error {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .global-error {
+    padding: 0.875rem 1rem;
+  }
+}
+
+/* Dark mode support - Keen */
+[data-bs-theme="dark"] .form-control {
+  border-color: var(--bs-gray-600);
+  background-color: var(--bs-gray-800);
+  color: var(--bs-gray-300);
+}
+
+[data-bs-theme="dark"] .form-control:focus {
+  background-color: var(--bs-gray-700);
+  border-color: var(--bs-primary);
+}
+
+[data-bs-theme="dark"] .field-error-message {
+  background-color: rgba(241, 65, 108, 0.1);
+  color: #f1416c;
+}
+
+[data-bs-theme="dark"] .global-error {
+  background-color: rgba(241, 65, 108, 0.1);
+  border-color: #f1416c;
+}
+
+/* Keen input placeholder */
+.form-control::placeholder {
+  color: var(--bs-gray-400);
+  opacity: 1;
+}
+
+/* Keen input focus placeholder */
+.form-control:focus::placeholder {
+  color: var(--bs-gray-500);
+}
+
+/* Compatibilidad con .bg-transparent de Keen */
+.form-control.bg-transparent {
+  background-color: transparent !important;
+}
+
+.form-control.bg-transparent:focus {
+  background-color: var(--bs-light-primary) !important;
+}
+
+.form-control.bg-transparent.ng-touched.ng-invalid {
+  background-color: var(--bs-light-danger) !important;
+}
+
+.form-control.bg-transparent.ng-touched.ng-valid {
+  background-color: var(--bs-light-success) !important;
+}
+
+.input-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  right: 0.75rem;
+  color: var(--bs-danger);
+  font-weight: 600;
+  font-size: 1.1rem;
+  pointer-events: none;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  height: 100%;   /* fuerza centrado vertical */
+}
+
+/* eliminar cualquier ::after previo que pudiera quedar */
+.fv-row::after,
+.form-control::after {
+  display: none !important;
+}
+
+.input-icon {
+  position: absolute;
+  right: 0.75rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  pointer-events: none;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.input-icon-error  { color: var(--bs-danger); }
+.input-icon-success{ color: var(--bs-success); }

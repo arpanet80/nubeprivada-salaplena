@@ -1,0 +1,29 @@
+/* Asegurar que el modal esté por encima de todo */
+.modal {
+  z-index: 1055;
+}
+
+.modal-backdrop {
+  z-index: 1050;
+}
+
+/* Scroll suave en el body del modal */
+.modal-body.scroll-y {
+  overflow-y: auto;
+  max-height: calc(100vh - 250px); /* deja espacio para header/footer */
+}
+
+/* Evitar que el modal se corte en pantallas pequeñas */
+@media (max-height: 700px) {
+  .modal-body.scroll-y {
+    max-height: calc(100vh - 180px);
+  }
+}
+
+/* Foco visible para accesibilidad */
+.modal button:focus,
+.modal input:focus,
+.modal select:focus {
+  outline: 2px solid #009ef7;
+  outline-offset: 2px;
+}

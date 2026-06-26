@@ -1,0 +1,61 @@
+<!-- Modal -->
+<div
+  class="modal fade"
+  [id]="modalId"
+  tabindex="-1"
+  [attr.aria-labelledby]="modalId + 'Label'"
+  aria-hidden="true"
+  data-bs-focus="false"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <!-- Header -->
+      <div class="modal-header">
+        <h2 class="modal-title" [id]="modalId + 'Label'">{{ title }}</h2>
+        <button
+          type="button"
+          class="btn btn-sm btn-icon btn-active-color-primary"
+          (click)="close()"
+          aria-label="Cerrar modal"
+        >
+          <i class="ki-duotone ki-cross fs-1">
+            <span class="path1"></span>
+            <span class="path2"></span>
+          </i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body scroll-y mx-5 mx-xl-15 my-7">
+        @if (contentTemplate) {
+          <ng-container *ngTemplateOutlet="contentTemplate"></ng-container>
+        } @else {
+          <ng-content></ng-content>
+        }
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-light"
+          (click)="close()"
+        >
+          Cerrar
+        </button>
+
+        @if (showSaveButton) {
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="onSave()"
+          >
+            Guardar
+          </button>
+        }
+      </div>
+
+    </div>
+  </div>
+</div>

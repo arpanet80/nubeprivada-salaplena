@@ -1,0 +1,68 @@
+/* Home Dashboard - Keen Theme */
+
+/* Tarjetas de estadísticas con fondo de onda */
+.card .bg-white.bg-opacity-50 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.card .bg-white {
+  background-color: #ffffff !important;
+}
+
+/* Progress bar personalizado */
+.progress.h-20px {
+  height: 20px !important;
+  border-radius: 10px;
+  background-color: #50CD89;
+}
+
+.progress-bar.bg-success {
+  background-color: #50CD89 !important;
+}
+
+.progress-bar.bg-warning {
+  background-color: #FFC700 !important;
+}
+
+.progress-bar.bg-danger {
+  background-color: #F1416C !important;
+}
+
+/* Notice box */
+.notice {
+  transition: all 0.2s ease;
+}
+
+.notice:hover {
+  background-color: #e8f4fd !important;
+}
+
+/* Symbol labels */
+.symbol-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card hover effect */
+.card-flush {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-flush:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1399.98px) {
+  .card .fs-2hx {
+    font-size: 2rem !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .card .fs-2hx {
+    font-size: 1.75rem !important;
+  }
+}

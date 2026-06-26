@@ -1,0 +1,97 @@
+name: Docker Build and Push - Sala Plena API
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - 'sala-plena-api/**'
+      - '.github/workflows/docker-deploy-sala-plena-api.yml'
+      - 'docker-deploy-sala-plena-api.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Entorno de despliegue'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  REGISTRY: 10.51.15.42:5000
+  IMAGE_NAME: sala-plena-api
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  build-and-push:
+    runs-on: self-hosted
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      # ── 1. Checkout ──
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── 2. Set up Docker Buildx ──
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+
+      # ── 3. Login to Registry ──
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # ── 4. Extract metadata ──
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production' }}
+            type=sha,prefix=,suffix=,format=short
+            type=ref,event=branch
+
+      # ── 5. Build and Push ──
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sala-plena-api
+          file: ./sala-plena-api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NODE_ENV=production
+
+      # ── 6. Verify image ──
+      - name: Verify image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          echo "✅ Imagen construida y subida correctamente"
+
+      # ── 7. Cleanup old images (keep last 5) ──
+      - name: Cleanup old images
+        run: |
+          docker image prune -af --filter "until=168h" || true
+          docker system prune -f || true
+          echo "🧹 Limpieza completada"
+
+      # ── 8. Notify (opcional) ──
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "Deployment status: ${{ job.status }}"
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "Commit: ${{ github.sha }}"

@@ -1,0 +1,24 @@
+<!-- -------------- Simple sin submenus ------------------------ -->
+@if (tienePermiso()) {
+
+  <!--begin:Menu item-->
+  <div class="menu-item">
+
+    <!--begin:Menu link-->
+    <a class="menu-link"
+        routerLinkActive="active"
+        [routerLink]="menusimple().url">
+
+      <span class="menu-icon">
+        <i [class]="menusimple().icono"></i>
+      </span>
+
+      <span class="menu-title">
+        {{ menusimple().titulo }}
+      </span>
+    </a>
+    <!--end:Menu link-->
+  </div>
+  <!--end:Menu item-->
+
+}

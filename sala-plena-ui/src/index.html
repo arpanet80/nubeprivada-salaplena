@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Sistema interno TED</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Variables de entorno -->
+  <script src="env.js"></script>
+
+  <!-- Template Keen -->
+  <link href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" rel="stylesheet" />
+  <link href="keen/plugins/global/plugins.bundle.css" rel="stylesheet" type="text/css"/>
+  <link href="keen/css/style.bundle.css" rel="stylesheet" type="text/css"/>
+
+  <!-- Frame-busting anti-clickjacking (primera línea de defensa) -->
+  <script>
+    if (window.top !== window.self) {
+      window.top.location.replace(window.self.location.href);
+    }
+  </script>
+
+  <!-- Meta tags de seguridad que SÍ funcionan en HTML -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="description" content="Sistema de Gestión de Votantes">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!--
+    NOTA SOBRE ANTI-CLICKJACKING:
+    - X-Frame-Options y frame-ancestors NO funcionan en <meta>
+    - El frame-busting JavaScript arriba es la protección principal
+    - Para producción, configurar el servidor web (nginx/Apache) o NestJS Helmet:
+
+      app.use(helmet({
+        frameguard: { action: 'deny' },
+        contentSecurityPolicy: {
+          directives: { frameAncestors: ["'none'"] }
+        }
+      }));
+  -->
+
+</head>
+<body id="kt_app_body" data-kt-app-layout="dark-sidebar"
+      data-kt-app-header-fixed="true" data-kt-app-sidebar-enabled="true"
+      data-kt-app-sidebar-fixed="true" data-kt-app-sidebar-hoverable="true"
+      data-kt-app-sidebar-push-header="true" data-kt-app-sidebar-push-toolbar="true"
+      data-kt-app-sidebar-push-footer="true" data-kt-app-toolbar-enabled="true"
+      class="app-default mat-typography">
+
+  <app-root></app-root>
+
+  <!-- Global Javascript Bundle -->
+  <script src="keen/plugins/global/plugins.bundle.js"></script>
+  <script src="keen/js/scripts.bundle.js"></script>
+
+  <!-- Seguridad básica en producción -->
+  <script>
+    (function() {
+      'use strict';
+
+      const isProduction = !window.location.hostname.match(/^(localhost|127\.0\.0\.1|192\.168\.)/);
+
+      if (!isProduction) {
+        console.log('%c🔧 Modo Desarrollo', 'color: orange; font-size: 12px;');
+        return;
+      }
+
+      console.log('%c⚠️ Esta es una consola del navegador.', 'color: #666; font-size: 12px;');
+      console.log('%cSi alguien te pidió pegar código aquí, es una estafa.', 'color: #c00; font-size: 14px; font-weight: bold;');
+
+      // Frame busting adicional
+      if (window.top !== window.self) {
+        window.top.location = window.self.location;
+      }
+    })();
+  </script>
+
+</body>
+</html>

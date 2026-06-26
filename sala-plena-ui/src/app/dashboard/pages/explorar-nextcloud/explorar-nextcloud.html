@@ -1,0 +1,138 @@
+<!--begin::Card Explorador-->
+<div class="card card-flush">
+  <div class="card-header pt-5 pb-0 border-bottom">
+    <div class="card-title flex-column">
+      <h3 class="fw-bold text-gray-800 mb-1">
+        <i class="ki-duotone ki-cloud fs-2 me-2 text-primary"><span class="path1"></span><span class="path2"></span></i>
+        Nube Privada - Sala Plena
+      </h3>
+      <span class="text-gray-500 fw-semibold fs-7">Navegador de archivos Nextcloud</span>
+    </div>
+    <div class="card-toolbar">
+      <button class="btn btn-sm btn-icon btn-light" (click)="cargarDirectorio(currentPath())" title="Actualizar">
+        <i class="ki-duotone ki-arrows-circle fs-3"><span class="path1"></span><span class="path2"></span></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Breadcrumb -->
+  <div class="px-7 pt-4 pb-2 border-bottom d-flex align-items-center flex-wrap gap-1">
+    @for (part of breadcrumb(); track $index; let last = $last) {
+      @if ($index > 0) {
+        <span class="nc-breadcrumb-sep">
+          <i class="ki-duotone ki-right fs-7"><span class="path1"></span><span class="path2"></span></i>
+        </span>
+      }
+      @if (last) {
+        <span class="fw-semibold text-gray-700 fs-7">{{ part }}</span>
+      } @else {
+        <a class="text-primary fw-semibold fs-7 cursor-pointer" (click)="navegarA($index)">{{ part }}</a>
+      }
+    }
+  </div>
+
+  <div class="card-body p-0">
+
+    <!-- Loading -->
+    @if (loading()) {
+      <div class="nc-loading">
+        <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+        <span class="nc-loading-text text-gray-500">Cargando...</span>
+      </div>
+    } @else {
+      <div class="table-responsive">
+        <table class="table align-middle nc-table mb-0">
+          <thead>
+            <tr>
+              <th class="nc-col-icon"></th>
+              <th>Nombre</th>
+              <th class="nc-col-size">Tamaño</th>
+              <th class="nc-col-date">Modificado</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <!-- Subir nivel -->
+            @if (currentPath()) {
+              <tr class="nc-row nc-row-up" (click)="onVolver()">
+                <td class="nc-col-icon">
+                  <div class="nc-icon-wrap">
+                    <svg class="nc-icon-svg" viewBox="0 0 24 24" fill="none">
+                      <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="#0082c9"/>
+                    </svg>
+                  </div>
+                </td>
+                <td colspan="3">
+                  <span class="nc-up-label">Subir un nivel</span>
+                </td>
+              </tr>
+            }
+
+            <!-- Vacío -->
+            @if (items().length === 0) {
+              <tr>
+                <td colspan="4" class="nc-empty">
+                  <i class="ki-duotone ki-cloud fs-3x nc-empty-icon"><span class="path1"></span><span class="path2"></span></i>
+                  <div class="nc-empty-text">Esta carpeta está vacía</div>
+                </td>
+              </tr>
+            }
+
+            <!-- Items -->
+            @for (item of items(); track item.path) {
+              <tr class="nc-row"
+                  [class.nc-row-folder]="item.isDirectory"
+                  [class.nc-row-file]="!item.isDirectory"
+                  [class.nc-row-pdf]="!item.isDirectory && isPdfFile(item.name)"
+                  (click)="onRowClick(item)">
+
+                <td class="nc-col-icon">
+                  <div class="nc-icon-wrap">
+                    @if (item.isDirectory) {
+                      <svg class="nc-icon-svg" viewBox="0 0 24 24" fill="none">
+                        <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#0082c9"/>
+                      </svg>
+                    } @else if (isPdfFile(item.name)) {
+                      <svg class="nc-icon-svg" viewBox="0 0 24 24" fill="none">
+                        <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="#e74c3c"/>
+                        <path d="M14 2v6h6" fill="#c0392b"/>
+                        <text x="12" y="17.5" text-anchor="middle" fill="white" font-size="4.5" font-weight="bold" font-family="sans-serif">PDF</text>
+                      </svg>
+                    } @else {
+                      <svg class="nc-icon-svg" viewBox="0 0 24 24" fill="none">
+                        <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z" fill="#8c97a3"/>
+                        <path d="M14 2v6h6" fill="#6c7b86"/>
+                      </svg>
+                    }
+                  </div>
+                </td>
+
+                <td>
+                  <span class="nc-item-name"
+                    [class.nc-item-name--folder]="item.isDirectory"
+                    [class.nc-item-name--pdf]="!item.isDirectory && isPdfFile(item.name)">
+                    {{ item.name }}
+                  </span>
+                </td>
+
+                <td class="nc-col-size">
+                  @if (!item.isDirectory) {
+                    {{ formatBytes(item.size) }}
+                  } @else {
+                    <span class="nc-dash">—</span>
+                  }
+                </td>
+
+                <td class="nc-col-date">
+                  {{ formatFecha(item.lastModified) }}
+                </td>
+              </tr>
+            }
+
+          </tbody>
+        </table>
+      </div>
+    }
+
+  </div>
+</div>

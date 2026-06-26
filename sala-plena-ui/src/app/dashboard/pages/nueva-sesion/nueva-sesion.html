@@ -1,0 +1,323 @@
+<!--begin::Formulario Nueva Sesión-->
+<div class="card card-flush">
+  <div class="card-header">
+    <div class="card-title">
+      <h2 class="fw-bold text-gray-800">
+        <i class="ki-duotone ki-document fs-2 me-2 text-primary"><span class="path1"></span><span class="path2"></span></i>
+        Nueva Sesión de Sala Plena
+      </h2>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <!-- Mensaje de error global -->
+    @if (errorMessage()) {
+      <div class="alert alert-danger d-flex align-items-center p-5 mb-5">
+        <i class="ki-duotone ki-information-5 fs-2x me-3 text-danger"><span class="path1"></span><span class="path2"></span></i>
+        <div class="d-flex flex-column">
+          <span class="fw-bold">Error</span>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      </div>
+    }
+
+    <!-- Formulario -->
+    <form (ngSubmit)="onSubmit()" #form="ngForm">
+      <div class="row g-5">
+        <!-- Título -->
+        <div class="col-md-8">
+          <label class="form-label fw-bold fs-6">Título de la Sesión <span class="text-danger">*</span></label>
+          <input type="text"
+                 class="form-control form-control-solid"
+                 placeholder="Ej: Sesión Ordinaria N° 45"
+                 [(ngModel)]="titulo"
+                 name="titulo"
+                 required
+                 maxlength="200">
+          <div class="form-text text-muted">Máximo 200 caracteres. No puede repetir fecha + título.</div>
+        </div>
+
+        <!-- Tipo de Sesión -->
+        <div class="col-md-4">
+          <label class="form-label fw-bold fs-6">Modalidad <span class="text-danger">*</span></label>
+          <select class="form-select form-select-solid"
+                  [(ngModel)]="tipoSesion"
+                  name="tipoSesion">
+            @for (tipo of tiposSesion; track tipo.value) {
+              <option [value]="tipo.value">{{ tipo.label }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Fecha -->
+        <div class="col-md-4">
+          <label class="form-label fw-bold fs-6">Fecha <span class="text-danger">*</span></label>
+          <input type="date"
+                 class="form-control form-control-solid"
+                 [(ngModel)]="fechaSesion"
+                 name="fechaSesion"
+                 [min]="minDate()"
+                 required>
+        </div>
+
+        <!-- Hora -->
+        <div class="col-md-4">
+          <label class="form-label fw-bold fs-6">Hora <span class="text-danger">*</span></label>
+          <input type="time"
+                 class="form-control form-control-solid"
+                 [(ngModel)]="horaSesion"
+                 name="horaSesion"
+                 required>
+        </div>
+
+        <!-- Resumen de archivos -->
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="d-flex align-items-center gap-3">
+            <div class="symbol symbol-40px bg-light-primary rounded">
+              <i class="ki-duotone ki-file fs-2 text-primary"><span class="path1"></span><span class="path2"></span></i>
+            </div>
+            <div>
+              <div class="fw-bold text-gray-800">{{ selectedFiles().length }} archivo(s)</div>
+              <div class="text-gray-500 fs-7">{{ formatBytes(totalSize()) }} total</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Área de Drag & Drop -->
+      <div class="mt-8">
+        <label class="form-label fw-bold fs-6">Documentos PDF <span class="text-danger">*</span></label>
+        <div class="dropzone dropzone-queue mb-2"
+             [class.bg-light-primary]="dragOver()"
+             [class.border-primary]="dragOver()"
+             (dragover)="onDragOver($event)"
+             (dragleave)="onDragLeave($event)"
+             (drop)="onDrop($event)">
+          <div class="dropzone-panel mb-4">
+            <label class="btn btn-primary btn-sm me-2">
+              <i class="ki-duotone ki-plus fs-3"><span class="path1"></span><span class="path2"></span></i>
+              Agregar PDFs
+              <input type="file"
+                     accept="application/pdf"
+                     multiple
+                     class="d-none"
+                     (change)="onFileSelected($event)">
+            </label>
+            <span class="text-gray-500 fs-7">o arrastra y suelta archivos aquí</span>
+          </div>
+
+          <!-- Lista de archivos -->
+          @if (selectedFiles().length > 0) {
+            <div class="dropzone-items">
+              @for (file of selectedFiles(); track $index) {
+                <div class="dropzone-item p-3 rounded border border-dashed border-gray-300 mb-2 bg-white">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="symbol symbol-35px bg-light-danger rounded">
+                        <i class="ki-duotone ki-file-pdf fs-2 text-danger"><span class="path1"></span><span class="path2"></span></i>
+                      </div>
+                      <div>
+                        <div class="fw-bold text-gray-800 text-truncate" style="max-width: 400px;">
+                          {{ file.name }}
+                        </div>
+                        <div class="text-gray-500 fs-7">{{ formatBytes(file.size) }}</div>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-icon btn-sm btn-light-danger"
+                            (click)="removeFile($index)"
+                            title="Eliminar">
+                      <i class="ki-duotone ki-cross fs-3"><span class="path1"></span><span class="path2"></span></i>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="text-center py-10">
+              <i class="ki-duotone ki-file-up fs-3x text-gray-400 mb-3"><span class="path1"></span><span class="path2"></span></i>
+              <div class="text-gray-500 fs-6">Arrastra archivos PDF aquí</div>
+              <div class="text-gray-400 fs-7">Máximo 50 archivos, 100MB cada uno</div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Botones -->
+      <div class="d-flex justify-content-end gap-3 mt-8">
+        <button type="button" class="btn btn-light" (click)="onCancel()">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary"
+                [disabled]="!isFormValid() || isPublishing()">
+          @if (isPublishing()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Publicando...
+          } @else {
+            <i class="ki-duotone ki-send fs-2 me-2"><span class="path1"></span><span class="path2"></span></i>
+            Publicar Sesión
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MODAL DE PROGRESO
+     ════════════════════════════════════════════════════════════ -->
+@if (progressVisible()) {
+  <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">
+            <i class="ki-duotone ki-loading fs-2 text-primary me-2"><span class="path1"></span><span class="path2"></span></i>
+            Publicando Sesión...
+          </h5>
+        </div>
+        <div class="modal-body p-6">
+          <div class="mb-4">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="fw-bold text-gray-800">{{ progress()?.mensaje }}</span>
+              <span class="text-primary fw-bold">{{ progress()?.porcentaje ?? 0 }}%</span>
+            </div>
+            <div class="progress h-25px">
+              <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                   role="progressbar"
+                   [style.width.%]="progress()?.porcentaje ?? 0">
+              </div>
+            </div>
+          </div>
+          <div class="text-gray-600 fs-6">
+            <i class="ki-duotone ki-information fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
+            {{ progress()?.mensaje ?? 'Iniciando...' }}
+          </div>
+          @if (progress()?.detalle) {
+            <div class="text-gray-500 fs-7 mt-2 fst-italic">
+              {{ progress()?.detalle }}
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ════════════════════════════════════════════════════════════
+     MODAL DE RESULTADO
+     ════════════════════════════════════════════════════════════ -->
+@if (resultVisible()) {
+  <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <div class="d-flex align-items-center gap-3">
+            <div class="symbol symbol-50px bg-light-success rounded-circle">
+              <i class="ki-duotone ki-check-circle fs-2x text-success"><span class="path1"></span><span class="path2"></span></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-gray-800">¡Sesión Publicada!</h5>
+              <div class="text-gray-500 fs-7">La sesión se ha creado y notificado correctamente</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-body px-6 pb-6">
+          @if (resultData()) {
+            <div class="bg-light rounded p-4 mb-4">
+              <div class="mb-3">
+                <label class="form-label fw-bold fs-7 text-gray-600">Enlace Nextcloud</label>
+                <div class="input-group">
+                  <input type="text" class="form-control form-control-sm" [value]="resultData()?.urlNextcloud" readonly>
+                  <button class="btn btn-sm btn-light-primary" type="button" (click)="copyToClipboard(resultData()?.urlNextcloud)">
+                    <i class="ki-duotone ki-copy fs-3"><span class="path1"></span><span class="path2"></span></i>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="form-label fw-bold fs-7 text-gray-600">Contraseña</label>
+                <div class="input-group">
+                  <input type="text" class="form-control form-control-sm" [value]="resultData()?.password" readonly>
+                  <button class="btn btn-sm btn-light-primary" type="button" (click)="copyToClipboard(resultData()?.password)">
+                    <i class="ki-duotone ki-copy fs-3"><span class="path1"></span><span class="path2"></span></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Estado de WhatsApp con polling -->
+          <div class="mb-4">
+            @if (verificandoWhatsapp()) {
+              <div class="alert alert-info d-flex align-items-center p-3">
+                <span class="spinner-border spinner-border-sm me-3"></span>
+                <div>
+                  <span class="fw-bold">Verificando envío de WhatsApp...</span>
+                  <div class="text-gray-600 fs-7">Espere un momento</div>
+                </div>
+              </div>
+            } @else if (whatsappEnviadoOk()) {
+              <div class="alert alert-success d-flex align-items-center p-3">
+                <i class="ki-duotone ki-check-circle fs-2x me-3 text-success"><span class="path1"></span><span class="path2"></span></i>
+                <div>
+                  <span class="fw-bold">WhatsApp enviado correctamente</span>
+                  <div class="text-gray-600 fs-7">Redirigiendo al dashboard en unos segundos...</div>
+                </div>
+              </div>
+            } @else {
+              <div class="alert alert-warning d-flex align-items-center p-3">
+                <i class="ki-duotone ki-information-5 fs-2x me-3 text-warning"><span class="path1"></span><span class="path2"></span></i>
+                <div>
+                  <span class="fw-bold">WhatsApp no se envió automáticamente</span>
+                  <div class="text-gray-600 fs-7">Puede enviarlo manualmente usando el botón de abajo.</div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- BOTÓN DE ENVÍO MANUAL (solo si WhatsApp falló y no está verificando) -->
+          @if (!whatsappEnviadoOk() && !verificandoWhatsapp()) {
+            <button class="btn btn-success w-100" (click)="envioManualWhatsapp()">
+              <i class="ki-duotone ki-whatsapp fs-2 me-2"><span class="path1"></span><span class="path2"></span></i>
+              Envío Manual WhatsApp
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ════════════════════════════════════════════════════════════
+     MODAL DE CONFIRMACIÓN DE ENVÍO MANUAL
+     ════════════════════════════════════════════════════════════ -->
+@if (confirmModalVisible()) {
+  <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">
+            <i class="ki-duotone ki-question fs-2 text-primary me-2"><span class="path1"></span><span class="path2"></span></i>
+            Confirmar Envío
+          </h5>
+        </div>
+        <div class="modal-body p-6 text-center">
+          <div class="mb-4">
+            <i class="ki-duotone ki-whatsapp fs-3x text-success mb-3"><span class="path1"></span><span class="path2"></span></i>
+            <h5 class="fw-bold text-gray-800">¿Se envió el mensaje correctamente?</h5>
+            <p class="text-gray-500 fs-7">El mensaje ya fue copiado al portapapeles y WhatsApp Web se abrió en una nueva pestaña.</p>
+          </div>
+          <div class="d-flex gap-3 justify-content-center">
+            <button class="btn btn-light-danger w-100" (click)="confirmarEnvioManual(false)">
+              <i class="ki-duotone ki-cross fs-2 me-1"><span class="path1"></span><span class="path2"></span></i>
+              NO
+            </button>
+            <button class="btn btn-success w-100" (click)="confirmarEnvioManual(true)">
+              <i class="ki-duotone ki-check fs-2 me-1"><span class="path1"></span><span class="path2"></span></i>
+              SÍ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}

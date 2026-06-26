@@ -1,0 +1,291 @@
+<div class="card card-flush h-xl-100">
+  <!-- ═════════════════════ HEADER: Buscador (izquierda) + Botones (derecha) ═════════════════════ -->
+  @if (showBuscador() || showBtnFiltrar() || showBtnNuevo() || botonesExtra().length > 0) {
+    <div class="card-header pt-6">
+      <!-- LADO IZQUIERDO: Buscador -->
+      <div class="card-title">
+        @if (showBuscador()) {
+          <div class="position-relative d-flex align-items-center">
+            <input
+              #searchInput
+              type="text"
+              class="form-control form-control-solid ps-10 pe-10"
+              style="width: 300px; border-radius: 8px;"
+              placeholder="Buscar en cualquier columna..."
+              [ngModel]="searchTerm()"
+              (ngModelChange)="onSearch($event)"
+              (keydown.escape)="clearSearch()">
+
+            <!-- Icono lupa izquierda -->
+            <span class="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted">
+              <i class="ki-duotone ki-magnifier fs-4">
+                <span class="path1"></span>
+                <span class="path2"></span>
+              </i>
+            </span>
+
+            <!-- Botón X (clear) - aparece solo cuando hay texto -->
+            @if (searchTerm()) {
+              <button
+                type="button"
+                class="btn btn-icon btn-sm btn-light position-absolute top-50 end-0 translate-middle-y me-1"
+                style="width: 24px; height: 24px; padding: 0;"
+                (click)="clearSearch()"
+                title="Limpiar búsqueda">
+                <i class="ki-duotone ki-cross fs-6 text-muted">
+                  <span class="path1"></span>
+                  <span class="path2"></span>
+                </i>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- LADO DERECHO: Botones -->
+      <div class="card-toolbar d-flex gap-2 align-items-center flex-wrap">
+        <!-- Botón Filtrar -->
+        @if (showBtnFiltrar()) {
+          <button type="button"
+                  class="btn btn-sm btn-light-primary"
+                  (click)="filtrar.emit()">
+            <i class="ki-duotone ki-filter fs-3"></i>
+            {{ tablaOpciones.btnFiltrarLabel ?? 'Filtrar' }}
+          </button>
+        }
+
+        <!-- Botón Nuevo -->
+        @if (showBtnNuevo()) {
+          <button type="button" class="btn btn-sm btn-primary"
+                  (click)="btnNuevo.emit()">
+            <i class="ki-duotone ki-plus fs-3"></i>
+            {{ tablaOpciones.btnNuevoLabel ?? 'Nuevo' }}
+          </button>
+        }
+
+        <!-- Botones extra configurables -->
+        @for (b of botonesExtra(); track b.id) {
+          <button type="button"
+                  class="btn btn-sm {{ b.colorClass }}"
+                  [title]="b.tooltip ?? ''"
+                  (click)="btnExtra.emit(b.id)">
+            @if (b.icon) {
+              <i [class]="b.icon"></i>
+            }
+            {{ b.label }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="card-body pt-0">
+    <!-- Loading -->
+    @if (loading) {
+      <div class="d-flex justify-content-center py-10">
+        <span class="spinner-border spinner-border-lg text-primary"></span>
+      </div>
+    } @else {
+      <div class="table-responsive">
+        <table class="table align-middle table-row-dashed fs-6 gy-5 mb-0">
+          <thead>
+            <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+              @for (col of tablaColumns; track col.key) {
+                <th [hidden]="col.hidden"
+                    (click)="sort(col.key)"
+                    style="cursor: pointer; user-select: none;"
+                    class="text-center">
+                  {{ col.label }}
+                  @if (isSortActive(col)) {
+                    <i class="ki-duotone ki-arrow-{{ getSortDirection(col) === 'asc' ? 'up' : 'down' }} fs-8 ms-1"></i>
+                  }
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of paginatedData(); track trackByFn($index, row)) {
+              <tr>
+                @for (col of tablaColumns; track col.key) {
+                  <td [class]="col.style ?? ''" [hidden]="col.hidden">
+                    @let editing = $any(row).isEdit && col.type !== 'button';
+
+                    @if (editing) {
+                      @if (col.readonly) {
+                        <span class="d-inline-block w-100 px-2 bg-secondary bg-opacity-10 rounded">
+                          {{ row | tableCell:col }}
+                        </span>
+                      } @else {
+                        @switch (col.type) {
+                          @case ('date') {
+                            <input type="date" class="form-control form-control-sm"
+                                  [value]="toInputDate(row[col.key])"
+                                  (input)="updateDate(row, col.key, $any($event.target).value)"
+                                  [required]="col.required ?? false"
+                                  [disabled]="col.disabled ?? false">
+                          }
+                          @case ('subnivel') {
+                            <input type="text" class="form-control form-control-sm"
+                                  [(ngModel)]="row[col.key][col.keysubnivel!]"
+                                  [required]="col.required ?? false"
+                                  [disabled]="col.disabled ?? false">
+                          }
+                          @default {
+                            <input class="form-control form-control-sm"
+                                  [type]="col.type"
+                                  [(ngModel)]="row[col.key]"
+                                  [required]="col.required ?? false"
+                                  [disabled]="col.disabled ?? false">
+                          }
+                        }
+                      }
+                    } @else {
+                      @switch (col.type) {
+                        @case ('button') {
+                          <div class="d-flex gap-1 justify-content-center">
+                            @if (isEditing(row)) {
+                              <button class="btn btn-light-success btn-sm" (click)="saveRow(row)">
+                                <i class="bi bi-check-lg"></i>
+                              </button>
+                              <button class="btn btn-light-danger btn-sm" (click)="cancelRow(row)">
+                                <i class="bi bi-x"></i>
+                              </button>
+                            } @else {
+                              @if (showBtnEdit()) {
+                                <button class="btn btn-sm btn-light-warning"
+                                        (click)="startEdit(row)"
+                                        title="Editar">
+                                  <i class="bi bi-pencil"></i> Editar
+                                </button>
+                              }
+                              @for (btn of col.buttons; track btn.id) {
+                                @if (btn.show ? btn.show(row) : true) {
+                                  <button class="btn btn-sm {{ btn.colorClass }}"
+                                          (click)="btnTableAction.emit({ action: btn.id, row })"
+                                          [title]="btn.tooltip ?? ''">
+                                    @if (btn.icon) {
+                                      <i [class]="btn.icon"></i>
+                                    }
+                                    {{ btn.label }}
+                                  </button>
+                                }
+                              }
+                            }
+                          </div>
+                        }
+                        @case ('avatar') {
+                          <div class="d-flex align-items-center">
+                            <div class="avatar-wrapper me-3">
+                              <img [src]="getAvatarUrl(row)" alt="avatar" class="avatar-img">
+                            </div>
+                            <div class="d-flex flex-column">
+                              <span class="text-gray-800 fw-bold">{{ row | tableCell:col }}</span>
+                            </div>
+                          </div>
+                        }
+                        @case ('date') {
+                          {{ row[col.key] | date:'dd/MM/yyyy' }}
+                        }
+                        @case ('checkbox') {
+                          <div class="form-check form-check-solid d-flex justify-content-center">
+                            <input class="form-check-input" type="checkbox" [checked]="row[col.key]" disabled>
+                          </div>
+                        }
+                        @case ('subnivel') {
+                          {{ row | tableCell:col }}
+                        }
+                        @case ('badge') {
+                          @let badge = col.badgeStyle?.(row[col.key], row);
+                          @if (badge) {
+                            <span class="badge badge-light-{{ badge.color }} fs-base">
+                              @if (badge.icon) {
+                                <i class="{{ badge.icon }} fs-5 text-{{ badge.color }} ms-n1">
+                                  <span class="path1"></span><span class="path2"></span>
+                                </i>
+                              }
+                              {{ badge.text ?? row[col.key] }}
+                            </span>
+                          } @else {
+                            {{ row | tableCell:col }}
+                          }
+                        }
+                        @default {
+                          {{ row | tableCell:col }}
+                        }
+                      }
+                    }
+                  </td>
+                }
+              </tr>
+            }
+            @empty {
+              <tr>
+                <td [colSpan]="columnasVisibles().length" class="text-center text-muted py-5">
+                  @if (searchTerm()) {
+                    No se encontraron resultados para "{{ searchTerm() }}"
+                  } @else {
+                    No hay datos disponibles
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- Paginación -->
+    @if (totalPages() > 1 && !loading) {
+      <div class="d-flex justify-content-between align-items-center py-4 flex-wrap gap-3">
+
+        <!-- Selector de registros por página -->
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted fs-7">Mostrar</span>
+          <select class="form-select form-select-sm w-auto"
+                  [value]="pageSize()"
+                  (change)="changePageSize(+$any($event.target).value)">
+            @for (opt of pageSizeOptions; track opt) {
+              <option [value]="opt" [selected]="pageSize() === opt">{{ opt }}</option>
+            }
+          </select>
+          <span class="text-muted fs-7">registros</span>
+        </div>
+
+        <!-- Info de registros -->
+        <span class="text-muted fs-7">
+          {{ paginatedData().length }} de {{ totalRecords() }}
+          @if (mode() === 'remote') {
+            · Pág. {{ currentPage() }} / {{ totalPages() }}
+          }
+        </span>
+
+        <!-- Botones de navegación -->
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-light btn-pagination"
+                  [disabled]="currentPage() === 1"
+                  (click)="goPage(currentPage() - 1)">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+
+          @for (item of paginationRange(); track item.value + item.type) {
+            @if (item.type === 'ellipsis') {
+              <button class="btn btn-light btn-pagination" disabled>...</button>
+            } @else {
+              <button class="btn btn-light btn-pagination"
+                      [class.active]="currentPage() === item.value"
+                      (click)="goPage(item.value)">
+                {{ item.value }}
+              </button>
+            }
+          }
+
+          <button class="btn btn-light btn-pagination"
+                  [disabled]="currentPage() === totalPages()"
+                  (click)="goPage(currentPage() + 1)">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,218 @@
+/* =========================================
+   Nextcloud Explorer — compatible con Keen
+   ========================================= */
+
+/* Toolbar / breadcrumb */
+.nc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-light);
+  min-height: 50px;
+}
+
+.nc-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 0.875rem;
+}
+
+.nc-breadcrumb-link {
+  color: var(--bs-primary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--bs-border-radius-sm);
+  text-decoration: none;
+}
+
+.nc-breadcrumb-link:hover {
+  text-decoration: underline;
+  color: var(--bs-primary);
+}
+
+.nc-breadcrumb-sep {
+  color: var(--bs-gray-400);
+  font-size: 0.75rem;
+}
+
+.nc-breadcrumb-current {
+  font-weight: 600;
+  padding: 2px 6px;
+  color: var(--bs-gray-800);
+}
+
+.nc-btn-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--bs-gray-600);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.nc-btn-refresh:hover {
+  background: var(--bs-gray-200);
+  color: var(--bs-primary);
+}
+
+/* Loading */
+.nc-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  color: var(--bs-gray-500);
+}
+
+.nc-loading-text {
+  font-size: 0.875rem;
+}
+
+/* Tabla — no redefinir bordes globales, solo las filas */
+.nc-table {
+  width: 100%;
+}
+
+.nc-table thead th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bs-gray-500);
+  padding: 0.625rem 0.875rem;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: transparent;
+}
+
+.nc-table tbody td {
+  padding: 0.6rem 0.875rem;
+  vertical-align: middle;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.nc-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Hover en filas */
+.nc-row:hover td {
+  background: var(--bs-light);
+  cursor: pointer;
+}
+
+.nc-row:hover .nc-item-name {
+  color: var(--bs-primary);
+}
+
+.nc-row-up:hover td {
+  background: var(--bs-light);
+  cursor: pointer;
+}
+
+/* Columnas */
+.nc-col-icon {
+  width: 52px;
+  padding-left: 1rem !important;
+}
+
+.nc-col-size {
+  width: 90px;
+  text-align: right !important;
+  color: var(--bs-gray-500);
+  font-size: 0.8rem;
+}
+
+.nc-col-date {
+  width: 160px;
+  text-align: right !important;
+  padding-right: 1rem !important;
+  color: var(--bs-gray-500);
+  font-size: 0.8rem;
+}
+
+/* Icono */
+.nc-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.nc-icon-svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Nombre */
+.nc-item-name {
+  display: block;
+  color: var(--bs-gray-800);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+  transition: color 0.1s;
+}
+
+.nc-item-name--folder {
+  font-weight: 500;
+}
+
+.nc-item-name--pdf {
+  color: #c0392b;
+}
+
+.nc-row:hover .nc-item-name--pdf {
+  color: var(--bs-primary);
+}
+
+/* Subir nivel */
+.nc-up-label {
+  color: var(--bs-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.nc-dash {
+  color: var(--bs-gray-300);
+}
+
+/* Vacío */
+.nc-empty {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+}
+
+.nc-empty-icon {
+  color: var(--bs-gray-300);
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.nc-empty-text {
+  color: var(--bs-gray-400);
+  font-size: 0.875rem;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .nc-col-date { display: none; }
+  .nc-col-size { width: 70px; }
+  .nc-item-name { max-width: 200px; }
+}
