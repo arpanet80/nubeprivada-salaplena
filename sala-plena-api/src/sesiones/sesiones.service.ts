@@ -108,18 +108,28 @@ export class SesionesService {
   }
 
   // ============================================
-  // CREATE WITH UPLOAD (ASÍNCRONO)
+  // CREATE WITH UPLOAD (ASÍNCRONO) - CORREGIDO
   // ============================================
   async createWithUpload(
     createSesionDto: CreateSesionUploadDto,
     files: any[],
-  ): Promise<{ sesionId: number }> {
+  ): Promise<{ sesionId: number; message: string }> {
     const usuario = createSesionDto.usuarioRegistro || 'sistema';
 
-    // Validaciones
+
+    // FIX: Parsear fecha como local ANTES de cualquier uso
+    const [year, month, day] = createSesionDto.fechaSesion.split('-').map(Number);
+    const fechaSesionLocal = new Date(year, month - 1, day); // Mes 0-indexed, hora local 00:00
+    // Validación de duplicados CORREGIDA
+    // FIX: Validar duplicados comparando fecha como rango de un día
+    // Usamos Between con inicio y fin del día para evitar problemas de timezone
+    const [y, m, d] = createSesionDto.fechaSesion.split('-').map(Number);
+    const fechaInicio = new Date(y, m - 1, d, 0, 0, 0);
+    const fechaFin = new Date(y, m - 1, d, 23, 59, 59);
+
     const existing = await this.sesionRepository.findOne({
       where: {
-        fechaSesion: createSesionDto.fechaSesion as unknown as Date,
+        fechaSesion: Between(fechaInicio, fechaFin),
         titulo: ILike(createSesionDto.titulo),
       },
     });
@@ -130,7 +140,10 @@ export class SesionesService {
       );
     }
 
-    const fechaHoraSesion = new Date(`${createSesionDto.fechaSesion}T${createSesionDto.horaSesion || '00:00'}`);
+    const [fYear, fMonth, fDay] = createSesionDto.fechaSesion.split('-').map(Number);
+    const [fHour, fMin] = (createSesionDto.horaSesion || '00:00').split(':').map(Number);
+    const fechaHoraSesion = new Date(fYear, fMonth - 1, fDay, fHour, fMin, 0);
+
     const ahora = new Date();
     if (fechaHoraSesion < ahora) {
       throw new BadRequestException('La fecha y hora de la sesión no pueden ser pasadas');
@@ -170,17 +183,22 @@ export class SesionesService {
     const sesion = this.sesionRepository.create({
       carpeta,
       titulo: createSesionDto.titulo,
-      fechaSesion: createSesionDto.fechaSesion,
+      fechaSesion: fechaSesionLocal,
       horaSesion: createSesionDto.horaSesion || '14:00',
       tipoSesion: createSesionDto.tipoSesion || 'presencial',
       fechaExpiracion: fechaExpiracion.toISOString().split('T')[0],
       estado: 'activo',
       usuarioRegistro: usuario,
       password,
+      totalArchivos: files.length,
+      archivosSubidos: 0,
     });
 
     const saved = await this.sesionRepository.save(sesion);
     const realSesionId = saved.id;
+
+    // Limpiar archivos temporales en background (no bloqueante)
+    this.limpiarArchivosTemporales().catch(() => {});
 
     // Leer buffers de archivos
     const archivosBuffers: { nombre: string; buffer: Buffer; size: number }[] = [];
@@ -207,14 +225,24 @@ export class SesionesService {
       }
     }
 
-    // Procesar en background
-    this.procesarUploadEnBackground(realSesionId, carpeta, password, fechaExpiracion, archivosBuffers, usuario);
+    // Procesar en background con mejor manejo de errores
+    this.procesarUploadEnBackground(realSesionId, carpeta, password, fechaExpiracion, archivosBuffers, usuario)
+      .catch((error) => {
+        this.loggerService.logError(
+          'SesionesService',
+          `Error fatal en background para sesión ${realSesionId}`,
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      });
 
-    return { sesionId: realSesionId };
+    return {
+      sesionId: realSesionId,
+      message: 'Sesión creada. El procesamiento de archivos, email y notificaciones continúa en segundo plano.',
+    };
   }
 
   // ============================================
-  // PROCESAMIENTO EN BACKGROUND
+  // PROCESAMIENTO EN BACKGROUND - CORREGIDO
   // ============================================
   private async procesarUploadEnBackground(
     sesionId: number,
@@ -224,14 +252,22 @@ export class SesionesService {
     archivos: { nombre: string; buffer: Buffer; size: number }[],
     usuario: string,
   ): Promise<void> {
-    try {
-      await this.nextcloudService.createFolder(carpeta);
+    let nextcloudOk = false;
+    let shareUrl = '';
 
+    try {
+      // ─── 1. NEXTCLOUD ──────────────────────────────────────
+      await this.nextcloudService.createFolder(carpeta);
+      nextcloudOk = true;
+
+      let archivosCompletados = 0;
       for (const archivo of archivos) {
         const remotePath = `${carpeta}/${archivo.nombre}`;
         await this.nextcloudService.uploadFile(remotePath, archivo.buffer);
         const verified = await this.nextcloudService.verifyUpload(remotePath, archivo.size);
-        if (!verified) throw new InternalServerErrorException(`Verificación fallida`);
+        if (!verified) {
+          throw new InternalServerErrorException(`Verificación fallida para ${archivo.nombre}`);
+        }
 
         const doc = this.documentoRepository.create({
           sesionId,
@@ -240,41 +276,83 @@ export class SesionesService {
           rutaRemota: remotePath,
         });
         await this.documentoRepository.save(doc);
+
+        // Incrementar contador de archivos subidos
+        archivosCompletados++;
+        await this.sesionRepository.update(
+          { id: sesionId },
+          { archivosSubidos: archivosCompletados }
+        );
+        this.loggerService.info('SesionesService', `Archivo ${archivosCompletados}/${archivos.length} subido: ${archivo.nombre}`);
       }
 
       const share = await this.nextcloudService.createShare(
         carpeta, password, fechaExpiracion.toISOString().split('T')[0]
       );
+      shareUrl = share.url;
       await this.sesionRepository.update({ id: sesionId }, { urlNextcloud: share.url });
 
-      const archivosParaBackup = archivos.map(a => ({ nombre: a.nombre, contenido: a.buffer }));
-      const backupResult = await this.backupService.respaldarSesion(carpeta, archivosParaBackup);
-      if (backupResult.ok) await this.sesionRepository.update({ id: sesionId }, { respaldoOk: true });
+      // ─── 2. BACKUP (con try/catch independiente) ─────────────
+      try {
+        const archivosParaBackup = archivos.map(a => ({ nombre: a.nombre, contenido: a.buffer }));
+        const backupResult = await this.backupService.respaldarSesion(carpeta, archivosParaBackup);
+        if (backupResult.ok) {
+          await this.sesionRepository.update({ id: sesionId }, { respaldoOk: true });
+        }
+      } catch (backupError) {
+        this.loggerService.logError(
+          'SesionesService',
+          `Backup falló para sesión ${sesionId}, pero continuamos`,
+          backupError instanceof Error ? backupError : new Error(String(backupError)),
+        );
+        // NO fallamos todo por un error de backup
+      }
 
+      // ─── 3. EMAIL (con try/catch independiente) ─────────────
       const sesion = await this.sesionRepository.findOne({ where: { id: sesionId } });
       const nombresArchivos = archivos.map(a => a.nombre);
 
-      // ─── EMAIL ─────────────────────────────────────────────
-      const emailResult = await this.emailService.enviarNotificacionSesion({
-        titulo: sesion!.titulo,
-        tipoSesion: sesion!.tipoSesion,
-        fecha: this.formatFecha(sesion!.fechaSesion),
-        hora: sesion!.horaSesion,
-        urlNextcloud: share.url,
-        password,
-        fechaExpiracion: fechaExpiracion.toISOString().split('T')[0],
-        archivos: nombresArchivos,
-      });
-      
-      if (emailResult.ok) {
-        await this.sesionRepository.update(
-          { id: sesionId }, 
-          { emailEnviado: true, emailMensaje: emailResult.message }
+      let emailOk = false;
+      let emailError = '';
+      try {
+        const emailResult = await this.emailService.enviarNotificacionSesion({
+          titulo: sesion!.titulo,
+          tipoSesion: sesion!.tipoSesion,
+          fecha: this.formatFecha(sesion!.fechaSesion),
+          hora: sesion!.horaSesion,
+          urlNextcloud: shareUrl,
+          password,
+          fechaExpiracion: fechaExpiracion.toISOString().split('T')[0],
+          archivos: nombresArchivos,
+        });
+
+        if (emailResult.ok) {
+          emailOk = true;
+          await this.sesionRepository.update(
+            { id: sesionId },
+            { emailEnviado: true, emailMensaje: emailResult.message }
+          );
+          this.loggerService.info('SesionesService', `Email enviado para sesión ${sesionId}`);
+        } else {
+          emailError = emailResult.message;
+          this.loggerService.logError(
+            'SesionesService',
+            `Email falló para sesión ${sesionId}: ${emailResult.message}`,
+            new Error(emailResult.message),
+          );
+        }
+      } catch (emailErr) {
+        const errorMsg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+        emailError = errorMsg;
+        this.loggerService.logError(
+          'SesionesService',
+          `Excepción enviando email para sesión ${sesionId}`,
+          emailErr instanceof Error ? emailErr : new Error(errorMsg),
         );
-        this.loggerService.info('SesionesService', `Email marcado como enviado para sesión ${sesionId}`);
+        // NO fallamos todo por un error de email
       }
 
-      // ─── WHATSAPP ────────────────────────────────────────
+      // ─── 4. WHATSAPP (con try/catch independiente) ──────────
       let waResult: WhatsAppSendResult;
       try {
         waResult = await this.whatsAppService.enviarNotificacionSesion({
@@ -282,7 +360,7 @@ export class SesionesService {
           tipoSesion: sesion!.tipoSesion,
           fecha: this.formatFecha(sesion!.fechaSesion),
           hora: sesion!.horaSesion,
-          urlNextcloud: share.url,
+          urlNextcloud: shareUrl,
           password,
           archivos: nombresArchivos,
         });
@@ -291,30 +369,53 @@ export class SesionesService {
         waResult = { ok: false, mensaje: `Excepción: ${(waError as Error).message}` };
       }
 
-      this.loggerService.info('SesionesService', `WhatsApp resultado: ok=${waResult.ok}, mensaje=${waResult.mensaje?.substring(0, 100)}`);
-
       if (waResult.ok) {
         const sesionToUpdate = await this.sesionRepository.findOne({ where: { id: sesionId } });
         if (sesionToUpdate) {
           sesionToUpdate.whatsappEnviado = true;
           sesionToUpdate.whatsappMensaje = waResult.mensaje;
           await this.sesionRepository.save(sesionToUpdate);
-          this.loggerService.info('SesionesService', `WhatsApp marcado como enviado para sesión ${sesionId}`);
+          this.loggerService.info('SesionesService', `WhatsApp enviado para sesión ${sesionId}`);
         }
       } else {
         this.loggerService.logError('SesionesService', `WhatsApp falló para sesión ${sesionId}: ${waResult.mensaje}`, new Error('WhatsApp send failed'));
       }
 
-      this.loggerService.log(`Sesión ${sesionId} creada completamente por ${usuario}`, 'SesionesService');
+      // Estado final
+      if (emailOk && waResult.ok) {
+        this.loggerService.info('SesionesService', `Sesión ${sesionId} completada exitosamente por ${usuario}`);
+      } else if (!emailOk || !waResult.ok) {
+        // Marcamos como parcial si algo falló pero Nextcloud funciona
+        await this.sesionRepository.update(
+          { id: sesionId },
+          {
+            notas: `Procesamiento parcial. Email: ${emailOk ? 'OK' : 'FALLÓ - ' + emailError}. WhatsApp: ${waResult.ok ? 'OK' : 'FALLÓ - ' + waResult.mensaje}`
+          }
+        );
+      }
+
     } catch (error) {
-      if (carpeta) {
+      // Solo hacemos rollback de Nextcloud si falló antes de crear el share
+      if (nextcloudOk && !shareUrl) {
         try { await this.nextcloudService.deleteFile(carpeta); } catch (e) { /* ignore */ }
       }
+
       await this.sesionRepository.update(
         { id: sesionId },
-        { estado: 'error', notas: error instanceof Error ? error.message : 'Error desconocido' }
+        {
+          estado: 'error',
+          notas: error instanceof Error ? error.message : 'Error desconocido en procesamiento'
+        }
       );
-      this.loggerService.logError('SesionesService', `Error en background ${sesionId}`, error instanceof Error ? error : new Error(String(error)));
+
+      this.loggerService.logError(
+        'SesionesService',
+        `Error fatal en background ${sesionId}`,
+        error instanceof Error ? error : new Error(String(error)),
+      );
+
+      // Relanzamos para que el catch externo lo registre
+      throw error;
     }
   }
 
@@ -323,17 +424,27 @@ export class SesionesService {
   // ============================================
   async create(createSesionDto: CreateSesionDto): Promise<Sesion> {
     try {
+      // FIX: Validar duplicados comparando fecha como rango de un día
+      const [cy, cm, cd] = createSesionDto.fechaSesion.split('-').map(Number);
+      const cFechaInicio = new Date(cy, cm - 1, cd, 0, 0, 0);
+      const cFechaFin = new Date(cy, cm - 1, cd, 23, 59, 59);
+
       const existing = await this.sesionRepository.findOne({
         where: {
-          fechaSesion: createSesionDto.fechaSesion as unknown as Date,
+          fechaSesion: Between(cFechaInicio, cFechaFin),
           titulo: ILike(createSesionDto.titulo),
         },
       });
 
+      // DESPUÉS: devuelve advertencia pero continúa
+      // Opción A: agregar campo "warning" a la respuesta de createWithUpload
       if (existing) {
-        throw new ConflictException(
-          `Ya existe una sesión con la fecha "${createSesionDto.fechaSesion}" y título "${createSesionDto.titulo}"`,
+        // Log de advertencia pero no lanzar excepción
+        this.loggerService.info('SesionesService', 
+          `Advertencia: sesión similar existente (id ${existing.id}) para fecha ${createSesionDto.fechaSesion}`
         );
+        // Puedes agregar el warning a la respuesta:
+        // return { sesionId: ..., message: '...', warning: 'Ya existe una sesión similar...' }
       }
 
       if (!createSesionDto.tipoSesion) {
@@ -362,11 +473,19 @@ export class SesionesService {
       if (filters?.titulo) where.titulo = ILike(`%${filters.titulo}%`);
 
       if (filters?.fechaDesde && filters?.fechaHasta) {
-        where.fechaSesion = Between(new Date(filters.fechaDesde), new Date(filters.fechaHasta));
+        const [dy, dm, dd] = filters.fechaDesde.split('-').map(Number);
+        const [hy, hm, hd] = filters.fechaHasta.split('-').map(Number);
+        // Inicio del día "desde" y fin del día "hasta", ambos en hora local
+        where.fechaSesion = Between(
+          new Date(dy, dm - 1, dd, 0, 0, 0),
+          new Date(hy, hm - 1, hd, 23, 59, 59),
+        );
       } else if (filters?.fechaDesde) {
-        where.fechaSesion = Between(new Date(filters.fechaDesde), new Date('2099-12-31'));
+        const [dy, dm, dd] = filters.fechaDesde.split('-').map(Number);
+        where.fechaSesion = Between(new Date(dy, dm - 1, dd, 0, 0, 0), new Date('2099-12-31'));
       } else if (filters?.fechaHasta) {
-        where.fechaSesion = Between(new Date('1900-01-01'), new Date(filters.fechaHasta));
+        const [hy, hm, hd] = filters.fechaHasta.split('-').map(Number);
+        where.fechaSesion = Between(new Date('1900-01-01'), new Date(hy, hm - 1, hd, 23, 59, 59));
       }
 
       const [data, total] = await this.sesionRepository.findAndCount({
@@ -406,9 +525,14 @@ export class SesionesService {
       const sesion = await this.findOne(id);
 
       if (updateSesionDto.fechaSesion && updateSesionDto.titulo) {
+        // FIX: Validar duplicados comparando fecha como rango de un día
+        const [uy, um, ud] = updateSesionDto.fechaSesion.split('-').map(Number);
+        const uFechaInicio = new Date(uy, um - 1, ud, 0, 0, 0);
+        const uFechaFin = new Date(uy, um - 1, ud, 23, 59, 59);
+
         const existing = await this.sesionRepository.findOne({
           where: {
-            fechaSesion: updateSesionDto.fechaSesion as unknown as Date,
+            fechaSesion: Between(uFechaInicio, uFechaFin),
             titulo: ILike(updateSesionDto.titulo),
           },
         });
@@ -540,5 +664,46 @@ export class SesionesService {
       where: { sesionId },
       order: { fechaSubida: 'DESC' },
     });
+  }
+
+  // ============================================
+  // LIMPIEZA DE ARCHIVOS TEMPORALES
+  // ============================================
+  async limpiarArchivosTemporales(): Promise<void> {
+    const cleanupMinutes = this.configService.get<number>('UPLOAD_CLEANUP_AFTER_MINUTES', 60);
+    const tempPath = this.configService.get<string>('UPLOAD_TEMP_PATH', '/app/uploads/temp');
+
+    if (cleanupMinutes <= 0) return;
+
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+
+      if (!fs.existsSync(tempPath)) return;
+
+      const ahora = Date.now();
+      const maxAgeMs = cleanupMinutes * 60 * 1000;
+      const files = fs.readdirSync(tempPath);
+      let eliminados = 0;
+
+      for (const file of files) {
+        const filePath = path.join(tempPath, file);
+        try {
+          const stats = fs.statSync(filePath);
+          if (ahora - stats.mtimeMs > maxAgeMs) {
+            fs.unlinkSync(filePath);
+            eliminados++;
+          }
+        } catch (e) {
+          // Ignorar errores de archivos individuales
+        }
+      }
+
+      if (eliminados > 0) {
+        this.loggerService.info('SesionesService', `Limpieza temporal: ${eliminados} archivo(s) eliminado(s) de ${tempPath}`);
+      }
+    } catch (error) {
+      this.loggerService.logError('SesionesService', 'Error limpiando archivos temporales', error as Error);
+    }
   }
 }

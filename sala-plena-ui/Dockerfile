@@ -32,7 +32,12 @@ LABEL version="2.0"
 LABEL description="Sala Plena UI - Angular + Nginx"
 
 # Instalar utilidades
-RUN apk add --no-cache     curl     wget     && rm -rf /var/cache/apk/*
+RUN apk add --no-cache     curl     wget     tzdata     && rm -rf /var/cache/apk/*
+
+# ── Zona horaria fija del sistema (Bolivia) ──
+# Afecta principalmente los timestamps en los logs de acceso de nginx.
+ENV TZ=America/La_Paz
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Copiar configuración de nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf

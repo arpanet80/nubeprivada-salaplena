@@ -10,7 +10,7 @@ import { Role } from 'src/auth/enums/rol.enum';
 export class RotationController {
   constructor(private readonly rotationService: RotationService) {}
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Verificar estado de rotación' })
   @Get('status')
   async getStatus() {
@@ -21,7 +21,7 @@ export class RotationController {
     };
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Ejecutar rotación manualmente' })
   @Post('execute')
   async executeRotation() {

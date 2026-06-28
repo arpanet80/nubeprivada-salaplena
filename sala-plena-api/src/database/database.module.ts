@@ -22,7 +22,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
           type: 'postgres',
           url,
           entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-          synchronize: true,         // ⚠️ NUNCA poner true en producción
+          synchronize: false,         // ⚠️ NUNCA poner true en producción
           logging: configService.get<string>('NODE_ENV') === 'development',
         };
       },

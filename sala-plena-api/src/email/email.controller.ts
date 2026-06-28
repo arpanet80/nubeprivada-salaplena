@@ -11,7 +11,7 @@ import { SendEmailDto } from './dto/send-email.dto';
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Enviar email genérico' })
   @Post('send')
   async sendEmail(@Body() dto: SendEmailDto) {

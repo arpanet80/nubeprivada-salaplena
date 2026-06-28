@@ -29,21 +29,21 @@ export class WhatsAppController {
     };
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Estado de WhatsApp Web y QR de vinculación' })
   @Get('status')
   getStatus(): WhatsAppStatus {
     return this.whatsAppService.getStatus();
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Regenerar QR de vinculación' })
   @Post('qr')
   async regenerateQr(): Promise<WhatsAppStatus> {
     return this.whatsAppService.regenerateQr();
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Enviar mensaje al grupo configurado' })
   @Post('send')
   async sendMessage(
@@ -52,7 +52,7 @@ export class WhatsAppController {
     return this.whatsAppService.sendToGroup(mensaje);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Enviar mensaje a vocales individuales (números de .env)' })
   @Post('send-individual')
   async sendToIndividuals(
@@ -66,7 +66,7 @@ export class WhatsAppController {
     };
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Enviar mensaje a número(s) específico(s)' })
   @Post('send-to')
   async sendToNumbers(
@@ -84,7 +84,7 @@ export class WhatsAppController {
     };
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Enviar notificación completa de sesión (template con archivos)' })
   @Post('notify-session')
   async notifySession(

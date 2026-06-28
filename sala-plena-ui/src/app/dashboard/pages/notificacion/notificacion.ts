@@ -39,6 +39,9 @@ export class Notificacion implements OnInit {
   // ─── Mensaje generado ────────────────────────────────────
   mensajeGenerado = signal<string>('');
 
+  // ─── Modal de confirmación de envío manual ──────────────
+  confirmModalVisible = signal<boolean>(false);
+
   // ─── Computed defensivos ─────────────────────────────────
   documentosSesion = computed(() => {
     const s = this.selectedSesion();
@@ -87,7 +90,7 @@ export class Notificacion implements OnInit {
   }
 
   // ============================================
-  // CARGAR SESIONES
+  // CARGAR SESIONES - FIX: Ordenar por fecha_publicacion descendente
   // ============================================
   cargarSesiones(): void {
     this.loading.set(true);
@@ -95,10 +98,23 @@ export class Notificacion implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          // 🆕 ORDENAR por fecha_publicacion descendente (más reciente arriba)
+          // FIX: Ordenar por fecha_publicacion descendente (más reciente arriba)
+          // Con manejo defensivo: si fecha_publicacion no existe, fallback a fechaSesion+horaSesion
           const ordenadas = response.data.sort((a: Sesion, b: Sesion) => {
-            const fechaA = new Date((a as any).fecha_publicacion || `${a.fechaSesion}T${a.horaSesion}`);
-            const fechaB = new Date((b as any).fecha_publicacion || `${b.fechaSesion}T${b.horaSesion}`);
+            const aAny = a as any;
+            const bAny = b as any;
+
+            // Intentar usar fecha_publicacion primero
+            const fechaPubA = aAny.fecha_publicacion || aAny.fechaPublicacion;
+            const fechaPubB = bAny.fecha_publicacion || bAny.fechaPublicacion;
+
+            if (fechaPubA && fechaPubB) {
+              return new Date(fechaPubB).getTime() - new Date(fechaPubA).getTime();
+            }
+
+            // Fallback: usar fechaSesion + horaSesion
+            const fechaA = new Date(`${a.fechaSesion}T${a.horaSesion || '00:00'}`);
+            const fechaB = new Date(`${b.fechaSesion}T${b.horaSesion || '00:00'}`);
             return fechaB.getTime() - fechaA.getTime();
           });
 
@@ -302,11 +318,121 @@ Por favor no comparta este enlace.
   }
 
   // ============================================
-  // ABRIR WHATSAPP WEB
+  // ENVÍO MANUAL DE WHATSAPP (mismo comportamiento que nueva-sesion)
+  // Copia el mensaje de la sesión seleccionada, abre WhatsApp Web
+  // y pide confirmar si se envió correctamente.
+  //
+  // FIX: el modal de confirmación se muestra de inmediato (síncrono,
+  // dentro del mismo clic). Antes, confirmModalVisible.set(true) estaba
+  // dentro del .then() de clipboard.writeText(), DESPUÉS de window.open().
+  // En varios navegadores, llamar a window.open() luego de una promesa
+  // resuelta (como clipboard.writeText) ya no se considera "gesto directo
+  // del usuario" y puede ser bloqueado/lanzar excepción, lo que cortaba
+  // la ejecución antes de llegar al set(true) del modal. Por eso se veía
+  // el toastr de "copiado" pero nunca el modal.
   // ============================================
   abrirWhatsappWeb(): void {
-    this.copiarMensaje();
-    window.open('https://web.whatsapp.com', '_blank');
+    const sesion = this.selectedSesion();
+    if (!sesion) {
+      this.toastr.warning('Seleccione una sesión de la lista', 'Sin sesión seleccionada');
+      return;
+    }
+
+    const mensaje = this.mensajeGenerado();
+    if (!mensaje) {
+      console.warn('[Notificacion] No hay mensaje para copiar');
+      return;
+    }
+
+    // 1. Copiar al portapapeles (efecto secundario, no bloqueante)
+    this.copiarMensajeAlPortapapeles(mensaje);
+
+    // 2. Abrir WhatsApp Web (protegido, no debe impedir que se muestre el modal)
+    try {
+      window.open('https://web.whatsapp.com', '_blank');
+    } catch (e) {
+      console.warn('[Notificacion] No se pudo abrir WhatsApp Web:', e);
+    }
+
+    // 3. Mostrar SIEMPRE el modal de confirmación, en el mismo clic
+    this.confirmModalVisible.set(true);
+  }
+
+  /**
+   * Copia el mensaje usando Clipboard API y, si falla o no está
+   * disponible, recurre al fallback de execCommand/textarea.
+   * No abre ventanas ni controla el modal: solo copia.
+   */
+  private copiarMensajeAlPortapapeles(texto: string): void {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto)
+        .then(() => {
+          console.log('[Notificacion] Mensaje copiado via Clipboard API');
+          this.toastr.success('Mensaje copiado al portapapeles', 'Copiado');
+        })
+        .catch((err) => {
+          console.warn('[Notificacion] Clipboard API falló:', err);
+          this.copiarConFallback(texto);
+        });
+      return;
+    }
+    this.copiarConFallback(texto);
+  }
+
+  /**
+   * Fallback de copiado usando execCommand o textarea.
+   * Solo copia, no abre ventanas ni controla el modal.
+   */
+  private copiarConFallback(texto: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = texto;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+      const copiado = document.execCommand('copy');
+      if (copiado) {
+        console.log('[Notificacion] Mensaje copiado via execCommand');
+        this.toastr.success('Mensaje copiado al portapapeles', 'Copiado');
+      } else {
+        console.warn('[Notificacion] No se pudo copiar automáticamente. El usuario debe copiar manualmente.');
+      }
+    } catch (err) {
+      console.warn('[Notificacion] execCommand falló:', err);
+    }
+
+    document.body.removeChild(textArea);
+  }
+
+  // ============================================
+  // CONFIRMAR ENVÍO MANUAL
+  // Sin redirección: solo marca el estado y refresca la lista.
+  // ============================================
+  confirmarEnvioManual(enviado: boolean): void {
+    this.confirmModalVisible.set(false);
+
+    const sesion = this.selectedSesion();
+    if (!sesion) return;
+
+    if (enviado) {
+      this.sesionesService.marcarWhatsappEnviado(sesion.id, 'Enviado manualmente por el usuario')
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            this.toastr.success('Notificación registrada como enviada', 'Éxito');
+            this.cargarSesiones();
+          },
+          error: () => {
+            this.toastr.error('No se pudo registrar el envío', 'Error');
+          }
+        });
+    } else {
+      this.toastr.info('Puede reenviar la notificación cuando lo necesite', 'Reenvío disponible');
+    }
   }
 
   // ============================================
@@ -355,10 +481,28 @@ Por favor no comparta este enlace.
     });
   }
 
+  /**
+   * FIX: Formatear fecha sin aplicar timezone offset.
+   * Para strings YYYY-MM-DD, extrae los componentes directamente.
+   * Usa timezone America/La_Paz para evitar desfase de un día.
+   */
   formatFecha(fecha: string | Date): string {
     if (!fecha) return '';
+
+    // Si es string YYYY-MM-DD, extraer componentes directamente (sin timezone)
+    if (typeof fecha === 'string' && fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = fecha.split('-');
+      return `${day}/${month}/${year}`;
+    }
+
+    // Para Date u otros formatos, usar toLocaleDateString con timezone explícito
     const d = new Date(fecha);
-    return d.toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString('es-BO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/La_Paz'
+    });
   }
 
   formatBytes(bytes: number): string {

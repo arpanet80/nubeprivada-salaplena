@@ -14,6 +14,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { ApiTags, ApiOperation, ApiQuery, ApiConsumes } from '@nestjs/swagger';
@@ -27,6 +28,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { EmailService } from '../email/email.service';
 import * as path from 'path';
+import * as fs from 'fs';
 
 @ApiTags('Sesiones')
 @Controller('sesiones')
@@ -40,13 +42,34 @@ export class SesionesController {
   // RUTAS SIN :id (van primero)
   // ============================================
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Crear nueva sesión con archivos PDF' })
   @ApiConsumes('multipart/form-data')
   @Post('upload')
   @UseInterceptors(FilesInterceptor('files', 50, {
     storage: diskStorage({
-      destination: './uploads/temp',
+      destination: (req, file, cb) => {
+        // Ruta configurable: leer de .env o usar fallback
+        const uploadPath = process.env.UPLOAD_TEMP_PATH || './uploads/temp';
+        const resolvedPath = path.resolve(uploadPath);
+
+        // Crear directorio si no existe (multer no lo hace automáticamente
+        // cuando se usa callback en destination)
+        try {
+          if (!fs.existsSync(resolvedPath)) {
+            fs.mkdirSync(resolvedPath, { recursive: true });
+          }
+        } catch (err) {
+          // Fallback a directorio local si no tiene permisos
+          const fallbackPath = path.resolve('./uploads/temp');
+          if (!fs.existsSync(fallbackPath)) {
+            fs.mkdirSync(fallbackPath, { recursive: true });
+          }
+          return cb(null, fallbackPath);
+        }
+
+        cb(null, resolvedPath);
+      },
       filename: (req, file, cb) => {
         const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
         cb(null, `${uniqueSuffix}-${path.basename(file.originalname)}`);
@@ -69,7 +92,7 @@ export class SesionesController {
     return this.sesionesService.createWithUpload(createSesionDto, files);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Crear nueva sesión (sin archivos)' })
   @Post()
   create(
@@ -117,6 +140,7 @@ export class SesionesController {
   // ============================================
 
   // ESTADO de sesión (para polling del frontend)
+  @Throttle({ short: { ttl: 1000, limit: 999999 }, medium: { ttl: 60000, limit: 999999 }, long: { ttl: 3600000, limit: 999999 } })
   @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Obtener estado de procesamiento de sesión' })
   @Get(':id/status')
@@ -134,20 +158,24 @@ export class SesionesController {
       emailEnviado: sesion.emailEnviado,
       whatsappEnviado: sesion.whatsappEnviado,
       documentosCount: sesion.documentos?.length || 0,
+      archivosSubidos: sesion.archivosSubidos || 0,
+      totalArchivos: sesion.totalArchivos || 0,
       completado: !!sesion.urlNextcloud && sesion.emailEnviado,
     };
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Reenviar notificación de sesión por email' })
   @Post(':id/retry-email')
   async retryEmail(
     @Param('id', ParseIntPipe) id: number,
+    @Body() dto?: { destinatarios?: string[] },
   ) {
     const sesion = await this.sesionesService.findOne(id);
     const nombresArchivos = sesion.documentos?.map((d) => d.nombreArchivo) || [];
 
     const result = await this.emailService.enviarNotificacionSesion({
+      destinatarios: dto?.destinatarios,
       titulo: sesion.titulo,
       tipoSesion: sesion.tipoSesion || 'presencial',
       fecha: this.formatFecha(sesion.fechaSesion),
@@ -167,7 +195,7 @@ export class SesionesController {
     return result;
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Reenviar notificación de sesión por WhatsApp' })
   @Post(':id/retry-whatsapp')
   async retryWhatsapp(
@@ -176,7 +204,7 @@ export class SesionesController {
     return this.sesionesService.retryWhatsapp(id);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Cambiar estado de la sesión' })
   @Patch(':id/estado/:estado')
   cambiarEstado(
@@ -186,7 +214,7 @@ export class SesionesController {
     return this.sesionesService.cambiarEstado(id, estado);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Marcar email como enviado' })
   @Patch(':id/email-enviado')
   marcarEmailEnviado(
@@ -197,7 +225,7 @@ export class SesionesController {
   }
 
   // NUEVO: Marcar WhatsApp como enviado manualmente
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Marcar WhatsApp como enviado manualmente' })
   @Patch(':id/whatsapp-enviado')
   async marcarWhatsappEnviado(
@@ -207,7 +235,7 @@ export class SesionesController {
     return this.sesionesService.marcarWhatsappEnviado(id, mensaje);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Marcar respaldo como exitoso' })
   @Patch(':id/respaldo-ok')
   marcarRespaldoOk(@Param('id', ParseIntPipe) id: number): Promise<Sesion> {
@@ -225,7 +253,7 @@ export class SesionesController {
     return this.sesionesService.findOne(id);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Actualizar sesión' })
   @Patch(':id')
   update(
@@ -237,7 +265,7 @@ export class SesionesController {
     return this.sesionesService.update(id, updateSesionDto);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Eliminar sesión (soft delete)' })
   @Delete(':id')
   remove(

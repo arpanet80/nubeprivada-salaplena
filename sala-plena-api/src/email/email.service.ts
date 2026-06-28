@@ -11,6 +11,8 @@ interface NtlmOptions {
   workstation: string;
   body: string;
   headers: Record<string, string>;
+  rejectUnauthorized?: boolean;
+  timeout?: number;
 }
 
 interface NtlmResponse {
@@ -27,35 +29,37 @@ export class EmailService {
   private readonly authDomain: string;
   private readonly workstation: string;
   private readonly fromAddress: string;
+  private readonly fromName: string;
   private readonly defaultRecipients: string[];
+  private readonly timeout: number;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly loggerService: LoggerService,
   ) {
-    this.ewsUrl = this.configService.get<string>(
-      'EWS_URL',
-      'https://correo.oep.org.bo/EWS/Exchange.asmx',
-    );
+    this.ewsUrl = this.configService.get<string>('EWS_URL');
+    if (!this.ewsUrl || this.ewsUrl.trim() === '') {
+      throw new Error('EWS_URL debe estar definido en las variables de entorno');
+    }
 
-    this.authUser = this.configService.get<string>('NEXTCLOUD_SERVICE_USER', '');
-    this.authPass = this.configService.get<string>('NEXTCLOUD_SERVICE_PASSWORD', '');
+    this.authUser = this.configService.get<string>('EMAIL_USER', '');
+    this.authPass = this.configService.get<string>('EMAIL_PASSWORD', '');
     this.authDomain = this.configService.get<string>('EMAIL_AUTH_DOMAIN', '');
     this.workstation = this.configService.get<string>('EMAIL_NTLM_WORKSTATION', 'BACKEND');
 
-    this.fromAddress = this.configService.get<string>(
-      'EMAIL_FROM_ADDRESS',
-      'dante.ibanez@oep.org.bo',
-    );
+    this.fromAddress = this.configService.get<string>('EMAIL_ACCOUNTFROM_ADDRESS', '');
+    this.fromName = this.configService.get<string>('EMAIL_FROM_NAME', 'NOTIFICADORA - TED Potosi');
 
     const recipientsEnv = this.configService.get<string>('EMAIL_RECIPIENTS', '');
     this.defaultRecipients = recipientsEnv
       ? recipientsEnv.split(',').map((r) => r.trim())
       : [];
 
+    this.timeout = this.configService.get<number>('NEXTCLOUD_TIMEOUT_MS', 30000);
+
     this.loggerService.info(
       'EmailService',
-      `EWS (NTLM) configurado - url:${this.ewsUrl} user:${this.authUser} domain:"${this.authDomain}"`,
+      `EWS (NTLM) configurado - url:${this.ewsUrl} user:${this.authUser} from:${this.fromAddress} domain:"${this.authDomain}"`,
     );
   }
 
@@ -74,18 +78,47 @@ export class EmailService {
         'Content-Type': 'text/xml; charset=utf-8',
         SOAPAction: 'http://schemas.microsoft.com/exchange/services/2006/messages/CreateItem',
       },
+      rejectUnauthorized: false, // ← CRÍTICO: certificados internos/autofirmados
+      timeout: this.timeout,      // ← CRÍTICO: evita colgarse indefinidamente
     };
 
+    this.loggerService.debug(
+      'EmailService',
+      `SOAP Request:\n${soapBody.slice(0, 3000)}`,
+    );
+
     return new Promise((resolve, reject) => {
-      (httpntlm as any).post(options, (err: Error, res: NtlmResponse) => {
-        if (err) return reject(err);
-        resolve(res);
-      });
+      try {
+        (httpntlm as any).post(options, (err: Error, res: NtlmResponse) => {
+          if (err) {
+            this.loggerService.logError(
+              'EmailService',
+              `Error NTLM/HTTP: ${err.message}`,
+              err,
+            );
+            return reject(err);
+          }
+
+          this.loggerService.debug(
+            'EmailService',
+            `SOAP Response status:${res.statusCode} body:${res.body?.slice(0, 2000)}`,
+          );
+
+          resolve(res);
+        });
+      } catch (error) {
+        this.loggerService.logError(
+          'EmailService',
+          'Excepción al invocar httpntlm.post',
+          error as Error,
+        );
+        reject(error);
+      }
     });
   }
 
   /**
-   * Escapa caracteres especiales de XML en valores dinámicos.
+   * Escapa caracteres especiales de XML en valores dinámicos (NO en HTML completo).
    */
   private escapeXml(value: string): string {
     return value
@@ -111,6 +144,7 @@ export class EmailService {
 
   /**
    * Construye el envelope SOAP de CreateItem (envío de correo) para EWS.
+   * NOTA: No incluye <t:From> porque en EWS es de solo lectura en CreateItem.
    */
   private buildCreateItemSoap(
     destinatarios: string[],
@@ -125,6 +159,10 @@ export class EmailService {
           </t:Mailbox>`,
       )
       .join('');
+
+    // El cuerpo HTML va dentro de CDATA para preservar las tags HTML sin escapar.
+    // Si el HTML contiene "]]>", lo dividimos para no romper el CDATA.
+    const cuerpoHtmlSafe = cuerpoHtml.replace(/\]\]>/g, ']]]]><![CDATA[>');
 
     return `<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
@@ -141,7 +179,7 @@ export class EmailService {
       <m:Items>
         <t:Message>
           <t:Subject>${this.escapeXml(asunto)}</t:Subject>
-          <t:Body BodyType="HTML">${this.escapeXml(cuerpoHtml)}</t:Body>
+          <t:Body BodyType="HTML"><![CDATA[${cuerpoHtmlSafe}]]></t:Body>
           <t:ToRecipients>${toRecipientsXml}
           </t:ToRecipients>
         </t:Message>
@@ -159,6 +197,23 @@ export class EmailService {
   ): Promise<{ ok: boolean; message: string; messageId?: string }> {
     void cuerpoTexto;
     try {
+      if (!destinatarios || destinatarios.length === 0) {
+        return {
+          ok: false,
+          message: 'No hay destinatarios',
+        };
+      }
+
+      // Validar formato básico de emails
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const invalidEmails = destinatarios.filter((d) => !emailRegex.test(d));
+      if (invalidEmails.length > 0) {
+        return {
+          ok: false,
+          message: `Emails inválidos: ${invalidEmails.join(', ')}`,
+        };
+      }
+
       const soapBody = this.buildCreateItemSoap(destinatarios, asunto, cuerpoHtml);
       const res = await this.sendNtlmRequest(soapBody);
 

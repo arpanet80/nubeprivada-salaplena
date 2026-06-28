@@ -11,7 +11,7 @@ import { BackupResult, BackupVerifyResult } from './interfaces/backup-result.int
 export class BackupController {
   constructor(private readonly backupService: BackupService) {}
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Verificar si existe respaldo de una sesión' })
   @Get('verify')
   async verify(
@@ -20,7 +20,7 @@ export class BackupController {
     return this.backupService.verificarRespaldo(carpeta);
   }
 
-  @Auth(Role.Admin)
+  @Auth(Role.Admin, Role.Usuario)
   @ApiOperation({ summary: 'Respaldar sesión manualmente (prueba)' })
   @Post('test')
   async testBackup(

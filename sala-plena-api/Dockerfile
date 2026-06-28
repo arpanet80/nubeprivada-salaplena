@@ -63,6 +63,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cifs-utils \
     wget \
     ca-certificates \
+    tzdata \
     fonts-liberation \
     fonts-noto-color-emoji \
     libasound2 \
@@ -102,6 +103,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 
+# ── Zona horaria fija del sistema (Bolivia) ──
+# Esto asegura la hora correcta incluso si TZ no se pasa por entorno.
+ENV TZ=America/La_Paz
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
@@ -122,6 +128,7 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     WHATSAPP_SESSION_PATH=/app/whatsapp-session \
-    NODE_ENV=production
+    NODE_ENV=production \
+    TZ=America/La_Paz
 
 CMD ["node", "dist/main.js"]

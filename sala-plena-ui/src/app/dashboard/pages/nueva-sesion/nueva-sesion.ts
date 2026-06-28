@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { interval, takeWhile, switchMap, of } from 'rxjs';
+import { interval, Subscription } from 'rxjs';
+import { takeWhile, switchMap } from 'rxjs/operators';
 import { SpinnerService } from '../../../core/components/spinner/spinner.service';
 import { ToastrAlertService } from '../../../core/services/toastr-alert.service';
 import { SweetAlertService } from '../../../core/services/sweet-alert.service';
@@ -78,6 +79,9 @@ export class NuevaSesion implements OnInit {
     this.fechaSesion.set(this.toISODate(today));
   }
 
+  /**
+   * Convierte fecha local a string YYYY-MM-DD sin problemas de timezone.
+   */
   private toISODate(date: Date): string {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -159,6 +163,12 @@ export class NuevaSesion implements OnInit {
   }
 
   // ─── Verificar duplicado ──────────────────────────────────
+  /**
+   * FIX: Ya no se pregunta al usuario si desea continuar.
+   * Si existe una sesión con la misma fecha + título, se muestra
+   * un warning (no error, el usuario puede corregirlo) y se bloquea
+   * el envío hasta que cambie el título o la fecha.
+   */
   private verificarDuplicado(): Promise<boolean> {
     return new Promise((resolve) => {
       this.sesionesService.findAll(1, 1, {
@@ -171,7 +181,7 @@ export class NuevaSesion implements OnInit {
         next: (response) => {
           if (response.data && response.data.length > 0) {
             this.sweetAlert.warning(
-              `Ya existe una sesión con la fecha "${this.fechaSesion()}" y título "${this.titulo().trim()}". Cambie el título o la fecha.`,
+              `Ya existe una sesión registrada con la fecha "${this.fechaSesion()}" y un título similar. Modifique el título o la fecha para continuar.`,
               'Sesión duplicada'
             );
             resolve(false);
@@ -214,7 +224,7 @@ export class NuevaSesion implements OnInit {
       sesionId: 0,
       etapa: 'iniciando',
       porcentaje: 5,
-      mensaje: 'Iniciando publicación de sesión...',
+      mensaje: `Iniciando publicación de sesión... (${this.selectedFiles().length} archivo(s) - ${this.formatBytes(this.totalSize())})`,
       timestamp: new Date().toISOString(),
     });
 
@@ -247,9 +257,16 @@ export class NuevaSesion implements OnInit {
           this.isPublishing.set(false);
           this.spinnerService.hide();
           this.progressVisible.set(false);
+          const status = err.status;
           const msg = err.error?.message || err.message || 'Error desconocido';
           this.errorMessage.set(msg);
-          this.sweetAlert.error(msg, 'Error al publicar sesión');
+
+          // FIX: Conflict 409 es un WARNING, no un error
+          if (status === 409) {
+            this.sweetAlert.warning(msg, 'Sesión duplicada');
+          } else {
+            this.sweetAlert.error(msg, 'Error al publicar sesión');
+          }
         }
       });
   }
@@ -267,7 +284,6 @@ export class NuevaSesion implements OnInit {
             this.isPublishing.set(false);
             this.progressVisible.set(false);
             this.resultVisible.set(true);
-            this.sweetAlert.success(data.mensaje, 'Publicación Completada');
 
             if (data.detalle) {
               const urlMatch = data.detalle.match(/URL:\s*([^|]+)/);
@@ -279,7 +295,7 @@ export class NuevaSesion implements OnInit {
               });
             }
 
-            // Iniciar polling del estado real en vez de consulta única
+            // Iniciar polling del estado real
             this.verificarEstadoWhatsappConPolling(sesionId);
 
           } else if (data.etapa === 'error') {
@@ -299,59 +315,81 @@ export class NuevaSesion implements OnInit {
       });
   }
 
-  // Polling del estado hasta confirmar WhatsApp (máx 30 segundos)
+  /**
+   * FIX: Polling del estado de WhatsApp corregido.
+   * Antes se detenía apenas email+url estaban listos, sin esperar
+   * a que WhatsApp realmente terminara de enviarse (el backend envía
+   * el email ANTES que el WhatsApp, así que en el primer poll donde
+   * email ya estaba OK, whatsappEnviado todavía podía ser false, y el
+   * polling se cortaba ahí dando un falso "no enviado").
+   * Ahora el polling sigue corriendo hasta que whatsappEnviado sea
+   * true, o hasta agotar los intentos.
+   */
   private verificarEstadoWhatsappConPolling(sesionId: number): void {
     this.verificandoWhatsapp.set(true);
+    this.whatsappEnviadoOk.set(false);
     let intentos = 0;
-    const maxIntentos = 15; // 15 intentos × 2 segundos = 30 segundos máximo
+    const maxIntentos = 12; // 12 intentos × 5 segundos = 60 segundos máximo
 
-    interval(2000)
+    const sub = interval(5000)
       .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        switchMap(() => this.sesionesService.getStatus(sesionId)),
-        takeWhile((status: any) => {
-          intentos++;
-          const whatsappOk = status.whatsappEnviado === true;
-
-          console.log(`[NuevaSesion] Polling intento ${intentos}/${maxIntentos}, whatsappEnviado=${status.whatsappEnviado}`);
-
-          if (whatsappOk) {
-            // WhatsApp confirmado como enviado
-            this.whatsappEnviadoOk.set(true);
-            this.generarMensajeWhatsapp(status);
-            this.verificandoWhatsapp.set(false);
-            // 🆕 REDIRECCIÓN AUTOMÁTICA tras 5 segundos
-            this.programarRedireccionAutomatica();
-            return false; // Detener polling
-          }
-
-          if (intentos >= maxIntentos) {
-            // Timeout: asumir que no se envió
-            this.whatsappEnviadoOk.set(false);
-            this.generarMensajeWhatsapp(status);
-            this.verificandoWhatsapp.set(false);
-            return false; // Detener polling
-          }
-
-          // Seguir polleando
-          return true;
-        }, true) // Inclusive: emite el último valor que hace que se detenga
+        switchMap(() => this.sesionesService.getStatus(sesionId))
       )
       .subscribe({
         next: (status: any) => {
-          // Último valor emitido
+          intentos++;
+
+          const whatsappOk = status.whatsappEnviado === true;
+          const archivosSubidos = status.archivosSubidos || 0;
+          const totalArchivos = status.totalArchivos || this.selectedFiles().length;
+
+          console.log(`[NuevaSesion] Polling ${intentos}/${maxIntentos}: whatsapp=${whatsappOk}, archivos=${archivosSubidos}/${totalArchivos}`);
+
+          // Actualizar progreso con info de archivos subidos
+          if (totalArchivos > 0 && archivosSubidos < totalArchivos) {
+            this.progress.set({
+              sesionId: sesionId,
+              etapa: 'subiendo',
+              porcentaje: Math.round((archivosSubidos / totalArchivos) * 80) + 5,
+              mensaje: `Procesando... ${archivosSubidos} de ${totalArchivos} archivos subidos`,
+              detalle: `Subiendo archivos a Nextcloud...`,
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+          // Guardar datos para el mensaje de WhatsApp
+          this.generarMensajeWhatsapp(status);
+
+          // Solo paramos de verificar cuando WhatsApp ya se confirmó como enviado
+          if (whatsappOk) {
+            this.verificandoWhatsapp.set(false);
+            this.whatsappEnviadoOk.set(true);
+            sub.unsubscribe();
+            console.log('[NuevaSesion] WhatsApp confirmado como enviado');
+            this.programarRedireccionAutomatica();
+            return;
+          }
+
+          // Timeout: recién aquí asumimos que no se envió y mostramos opción manual
+          if (intentos >= maxIntentos) {
+            this.verificandoWhatsapp.set(false);
+            this.whatsappEnviadoOk.set(false);
+            sub.unsubscribe();
+            console.log('[NuevaSesion] Timeout de polling alcanzado, WhatsApp NO confirmado');
+          }
         },
         error: (err) => {
           console.error('[NuevaSesion] Error en polling de WhatsApp:', err);
-          this.whatsappEnviadoOk.set(false);
           this.verificandoWhatsapp.set(false);
+          this.whatsappEnviadoOk.set(false);
+          sub.unsubscribe();
         }
       });
   }
 
-  // 🆕 NUEVO: Programa la redirección automática después de 5 segundos
+  // Programa la redirección automática después de 5 segundos
   private programarRedireccionAutomatica(): void {
-    console.log('[NuevaSesion] WhatsApp enviado correctamente. Redirigiendo en 5 segundos...');
+    console.log('[NuevaSesion] Todo completado. Redirigiendo en 5 segundos...');
     setTimeout(() => {
       console.log('[NuevaSesion] Redirigiendo a /dashboard/home');
       this.router.navigate(['/dashboard/home']);
@@ -393,18 +431,80 @@ Por favor no comparta este enlace.
     this.mensajeWhatsapp.set(mensaje);
   }
 
-  // Envío manual de WhatsApp (fallback)
+  /**
+   * FIX: Envío manual de WhatsApp con fallback para clipboard no disponible.
+   * En contextos no seguros (HTTP), navigator.clipboard puede ser undefined.
+   */
+  /**
+   * FIX: Envío manual de WhatsApp con múltiples fallbacks para copiar el mensaje.
+   * Intenta: 1) Clipboard API, 2) execCommand, 3) textarea + select, 4) solo abrir WA Web
+   */
   envioManualWhatsapp(): void {
     const mensaje = this.mensajeWhatsapp();
-    if (!mensaje) return;
+    if (!mensaje) {
+      console.warn('[NuevaSesion] No hay mensaje para copiar');
+      return;
+    }
 
-    navigator.clipboard.writeText(mensaje).then(() => {
-      this.sweetAlert.success('Mensaje copiado al portapapeles', 'Copiado');
-      window.open('https://web.whatsapp.com', '_blank');
-      this.confirmModalVisible.set(true);
-    }).catch(() => {
-      this.sweetAlert.error('No se pudo copiar el mensaje', 'Error');
-    });
+    let copiado = false;
+
+    // Método 1: Clipboard API (requiere HTTPS o localhost)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        navigator.clipboard.writeText(mensaje).then(() => {
+          console.log('[NuevaSesion] Mensaje copiado via Clipboard API');
+          this.sweetAlert.toast('Mensaje copiado al portapapeles', 'success', 'top-end');
+          window.open('https://web.whatsapp.com', '_blank');
+          this.confirmModalVisible.set(true);
+        }).catch((err) => {
+          console.warn('[NuevaSesion] Clipboard API falló:', err);
+          this.copiarConFallback(mensaje);
+        });
+        return; // Async, salimos aquí
+      } catch (e) {
+        console.warn('[NuevaSesion] Clipboard API excepción:', e);
+      }
+    }
+
+    // Método 2: Fallback sincrónico
+    this.copiarConFallback(mensaje);
+  }
+
+  /**
+   * Fallback de copiado usando execCommand o textarea
+   */
+  private copiarConFallback(texto: string): void {
+    let copiado = false;
+
+    // Método 2a: document.execCommand (deprecated pero funciona en HTTP)
+    const textArea = document.createElement('textarea');
+    textArea.value = texto;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+      copiado = document.execCommand('copy');
+      if (copiado) {
+        console.log('[NuevaSesion] Mensaje copiado via execCommand');
+        this.sweetAlert.toast('Mensaje copiado al portapapeles', 'success', 'top-end');
+      }
+    } catch (err) {
+      console.warn('[NuevaSesion] execCommand falló:', err);
+    }
+
+    document.body.removeChild(textArea);
+
+    // Siempre abrir WhatsApp Web, aunque no se haya copiado
+    window.open('https://web.whatsapp.com', '_blank');
+    this.confirmModalVisible.set(true);
+
+    if (!copiado) {
+      console.warn('[NuevaSesion] No se pudo copiar automáticamente. El usuario debe copiar manualmente.');
+    }
   }
 
   // Confirmar envío manual
@@ -463,14 +563,37 @@ Por favor no comparta este enlace.
 
   copyToClipboard(text: string): void {
     if (!text) return;
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      console.warn('[NuevaSesion] Clipboard API no disponible');
+      return;
+    }
     navigator.clipboard.writeText(text).then(() => {
       this.sweetAlert.success('Copiado al portapapeles', 'Copiado');
+    }).catch((err) => {
+      console.error('[NuevaSesion] Error copiando:', err);
     });
   }
 
+  /**
+   * FIX: Formatear fecha sin aplicar timezone offset.
+   * Para strings YYYY-MM-DD, extrae los componentes directamente.
+   */
   private formatFechaDisplay(fecha: string | Date): string {
     if (!fecha) return '';
+
+    // Si es string YYYY-MM-DD, extraer componentes directamente
+    if (typeof fecha === 'string' && fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = fecha.split('-');
+      return `${day}/${month}/${year}`;
+    }
+
+    // Para Date u otros formatos, usar toLocaleDateString con timezone explícito
     const d = new Date(fecha);
-    return d.toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString('es-BO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/La_Paz'
+    });
   }
 }

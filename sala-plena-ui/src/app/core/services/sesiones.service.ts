@@ -86,7 +86,7 @@ export class SesionesService {
 
   // ─── POLLING de progreso ──────────────────────────────────
   getProgressStream(id: number): Observable<SessionProgress> {
-    return interval(2000).pipe(
+    return interval(4000).pipe(
       switchMap(() => this.getStatus(id)),
       map((status: any) => {
         let porcentaje = 5;
@@ -115,10 +115,15 @@ export class SesionesService {
           porcentaje = 50;
           etapa = 'share';
           mensaje = 'Creando enlace compartido seguro...';
-        } else if (status.documentosCount > 0) {
-          porcentaje = 30;
-          etapa = 'subiendo';
-          mensaje = 'Subiendo archivos a la Nube Privada...';
+        } else if (status.totalArchivos > 0) {
+          // Usar archivosSubidos/totalArchivos para progreso real de upload
+          const subidos = status.archivosSubidos || 0;
+          const total = status.totalArchivos;
+          porcentaje = total > 0 ? Math.round((subidos / total) * 75) + 5 : 5;
+          etapa = subidos >= total ? 'verificando' : 'subiendo';
+          mensaje = subidos >= total 
+            ? 'Verificando archivos subidos...' 
+            : `Procesando... ${subidos} de ${total} archivos subidos`;
         }
 
         return {

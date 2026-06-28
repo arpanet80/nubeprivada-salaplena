@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsArray, ArrayMinSize } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsArray, ArrayMinSize, IsEmail } from 'class-validator';
 
 export class SendEmailDto {
   @ApiProperty({ description: 'Asunto del email', example: 'Citación a Sala Plena' })
@@ -21,6 +21,7 @@ export class SendEmailDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
+   @IsEmail({}, { each: true }) // ← NUEVO: valida formato de email
   destinatarios: string[];
 }
 

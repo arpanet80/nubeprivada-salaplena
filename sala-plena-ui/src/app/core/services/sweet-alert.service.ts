@@ -63,8 +63,8 @@ export class SweetAlertService {
   /**
    * Alerta de éxito con manejo de errores
    */
-  success(message: string, title: string = '¡Éxito!'): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  async success(message: string, title: string = '¡Éxito!'): Promise<any> {
+    return await this.fireSafe({
       icon: 'success',
       title,
       text: message,
@@ -78,8 +78,8 @@ export class SweetAlertService {
   /**
    * Alerta de error
    */
-  error(message: string, title: string = 'Error'): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  async error(message: string, title: string = 'Error'): Promise<any> {
+    return await this.fireSafe({
       icon: 'error',
       title,
       text: message,
@@ -91,8 +91,8 @@ export class SweetAlertService {
   /**
    * Alerta de advertencia
    */
-  warning(message: string, title: string = 'Advertencia'): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  async warning(message: string, title: string = 'Advertencia'): Promise<any> {
+    return await this.fireSafe({
       icon: 'warning',
       title,
       text: message,
@@ -105,8 +105,8 @@ export class SweetAlertService {
   /**
    * Alerta informativa
    */
-  info(message: string, title: string = 'Información'): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  async info(message: string, title: string = 'Información'): Promise<any> {
+    return await this.fireSafe({
       icon: 'info',
       title,
       text: message,
@@ -123,18 +123,18 @@ export class SweetAlertService {
    * Confirmación SÍ/NO segura
    * @deprecated El parámetro `html` booleano es inseguro. Usar `confirmHtml()` para contenido HTML confiable.
    */
-  confirm(
+  async confirm(
     message: string,
     title: string = '¿Estás seguro?',
     confirmText: string = 'Sí, continuar',
     cancelText: string = 'Cancelar',
     allowHtml: boolean = false
-  ): Promise<SweetAlertResult> {
+  ): Promise<any> {
     if (allowHtml) {
       console.warn('SweetAlertService.confirm(): allowHtml=true puede ser inseguro. Usa confirmHtml() para contenido HTML explícito.');
     }
 
-    return this.fireSafe({
+    return await this.fireSafe({
       icon: 'question',
       title,
       html: allowHtml ? this.sanitizeHtml(message) : undefined,
@@ -151,13 +151,13 @@ export class SweetAlertService {
   /**
    * Confirmación con HTML sanitizado (solo usar con contenido confiable)
    */
-  confirmHtml(
+  async confirmHtml(
     htmlContent: string,
     title: string = '¿Estás seguro?',
     confirmText: string = 'Sí, continuar',
     cancelText: string = 'Cancelar'
-  ): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  ): Promise<any> {
+    return await this.fireSafe({
       icon: 'question',
       title,
       html: this.sanitizeHtml(htmlContent),
@@ -173,11 +173,11 @@ export class SweetAlertService {
   /**
    * Confirmación de eliminación
    */
-  confirmDelete(
+  async confirmDelete(
     message: string = 'Esta acción no se puede deshacer',
     title: string = '¿Eliminar registro?'
-  ): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  ): Promise<any> {
+    return await this.fireSafe({
       icon: 'warning',
       title,
       text: message,
@@ -198,12 +198,12 @@ export class SweetAlertService {
   /**
    * Toast configurable sin fugas de memoria
    */
-  toast(
+  async toast(
     message: string,
     icon: SweetAlertIcon = 'success',
     position: 'top-end' | 'top-start' | 'bottom-end' | 'bottom-start' | 'top' | 'bottom' | 'center' = 'top-end',
     duration: number = 3000
-  ): Promise<SweetAlertResult> {
+  ): Promise<any> {
     const Toast = Swal.mixin({
       toast: true,
       position,
@@ -215,7 +215,7 @@ export class SweetAlertService {
         const leaveHandler = () => Swal.resumeTimer();
         toast.addEventListener('mouseenter', enterHandler);
         toast.addEventListener('mouseleave', leaveHandler);
-        
+
         // Guardar referencia para cleanup (SweetAlert2 no expone remove, pero el DOM se destruye)
         (toast as any).__swalHandlers = { enterHandler, leaveHandler };
       },
@@ -228,23 +228,23 @@ export class SweetAlertService {
       }
     });
 
-    return Toast.fire({ icon, title: message });
+    return await Toast.fire({ icon, title: message });
   }
 
-  toastSuccess(message: string, position?: any): Promise<SweetAlertResult> {
-    return this.toast(message, 'success', position);
+  async toastSuccess(message: string, position?: any): Promise<any> {
+    return await this.toast(message, 'success', position);
   }
 
-  toastError(message: string, position?: any): Promise<SweetAlertResult> {
-    return this.toast(message, 'error', position);
+  async toastError(message: string, position?: any): Promise<any> {
+    return await this.toast(message, 'error', position);
   }
 
-  toastWarning(message: string, position?: any): Promise<SweetAlertResult> {
-    return this.toast(message, 'warning', position);
+  async toastWarning(message: string, position?: any): Promise<any> {
+    return await this.toast(message, 'warning', position);
   }
 
-  toastInfo(message: string, position?: any): Promise<SweetAlertResult> {
-    return this.toast(message, 'info', position);
+  async toastInfo(message: string, position?: any): Promise<any> {
+    return await this.toast(message, 'info', position);
   }
 
   /*═══════════════════════════════════════════════════════════════
@@ -254,7 +254,7 @@ export class SweetAlertService {
   /**
    * InputBox simple con validación completa
    */
-    async inputbox(config: InputBoxConfig): Promise<SweetAlertResult & { value?: string }> {
+  async inputbox(config: InputBoxConfig): Promise<SweetAlertResult & { value?: string }> {
     const {
       title = 'Ingrese un valor',
       message = '',
@@ -372,12 +372,12 @@ export class SweetAlertService {
     title: string = 'Email',
     config?: Omit<InputBoxConfig, 'inputType' | 'message' | 'title'>
   ): Promise<SweetAlertResult & { value?: string }> {
-    return this.inputbox({
+    return await this.inputbox({
       title,
       message,
       inputType: 'email',
       placeholder: 'ejemplo@correo.com',
-      pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+      pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
       ...config
     });
   }
@@ -391,7 +391,7 @@ export class SweetAlertService {
     confirmPassword: boolean = false
   ): Promise<SweetAlertResult & { value?: string }> {
     if (!confirmPassword) {
-      return this.inputbox({
+      return await this.inputbox({
         title,
         message,
         inputType: 'password',
@@ -401,7 +401,7 @@ export class SweetAlertService {
     }
 
     // Doble input para confirmación
-    return this.fireSafe({
+    return await this.fireSafe({
       title,
       html: `
         <div class="swal2-input-group mb-3">
@@ -459,9 +459,9 @@ export class SweetAlertService {
     const htmlFields = fields.map((field, index) => {
       const inputId = `swal-field-${index}`;
       const requiredAttr = field.required ? 'required' : '';
-      
+
       let inputHtml = '';
-      
+
       if (field.type === 'select' && field.options) {
         const optionsHtml = Object.entries(field.options)
           .map(([key, val]) => `<option value="${key}">${val}</option>`)
@@ -592,8 +592,8 @@ export class SweetAlertService {
   /**
    * Alerta con HTML sanitizado (solo contenido confiable)
    */
-  html(htmlContent: string, title: string = '', icon?: SweetAlertIcon): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  async html(htmlContent: string, title: string = '', icon?: SweetAlertIcon): Promise<any> {
+    return await this.fireSafe({
       title,
       html: this.sanitizeHtml(htmlContent),
       icon,
@@ -605,8 +605,8 @@ export class SweetAlertService {
   /**
    * Alerta personalizada completa
    */
-  custom(config: AlertConfig): Promise<SweetAlertResult> {
-    return this.fireSafe({
+  async custom(config: AlertConfig): Promise<any> {
+    return await this.fireSafe({
       icon: config.icon || 'info',
       title: config.title || '',
       text: config.message,
@@ -624,30 +624,30 @@ export class SweetAlertService {
     ALERTAS ESPECÍFICAS DE DOMINIO
   ═══════════════════════════════════════════════════════════════*/
 
-  sessionExpired(): Promise<SweetAlertResult> {
-    return this.warning(
+  async sessionExpired(): Promise<any> {
+    return await this.warning(
       'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
       'Sesión expirada'
     );
   }
 
-  unauthorized(): Promise<SweetAlertResult> {
-    return this.warning(
+  async unauthorized(): Promise<any> {
+    return await this.warning(
       'No tienes permisos para realizar esta acción.',
       'Acceso denegado'
     );
   }
 
-  validationError(message: string = 'Por favor, verifica los campos del formulario'): Promise<SweetAlertResult> {
-    return this.error(message, 'Error de validación');
+  async validationError(message: string = 'Por favor, verifica los campos del formulario'): Promise<any> {
+    return await this.error(message, 'Error de validación');
   }
 
-  serverError(message: string = 'Ha ocurrido un error en el servidor'): Promise<SweetAlertResult> {
-    return this.error(message, 'Error del servidor');
+  async serverError(message: string = 'Ha ocurrido un error en el servidor'): Promise<any> {
+    return await this.error(message, 'Error del servidor');
   }
 
-  networkError(message: string = 'No se pudo conectar con el servidor'): Promise<SweetAlertResult> {
-    return this.error(message, 'Error de conexión');
+  async networkError(message: string = 'No se pudo conectar con el servidor'): Promise<any> {
+    return await this.error(message, 'Error de conexión');
   }
 
   /*═══════════════════════════════════════════════════════════════
@@ -656,17 +656,21 @@ export class SweetAlertService {
 
   /**
    * Ejecuta Swal.fire con sanitización y manejo de errores
+   * FIX: Usa try/catch en vez de .catch() para compatibilidad con SweetAlert2 v11+
    */
-  private fireSafe(options: SweetAlertOptions): Promise<SweetAlertResult> {
-    return Swal.fire(options).catch(err => {
+  private async fireSafe(options: SweetAlertOptions): Promise<any> {
+    try {
+      const result = await Swal.fire(options);
+      return result;
+    } catch (err) {
       console.error('SweetAlert2 error:', err);
       return {
         isConfirmed: false,
         isDenied: false,
         isDismissed: true,
         value: null
-      } as SweetAlertResult;
-    });
+      };
+    }
   }
 
   /**

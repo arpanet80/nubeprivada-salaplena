@@ -37,11 +37,11 @@ export class NextcloudService implements OnModuleInit {
     this.baseUrl = this.configService.get<string>('NEXTCLOUD_URL', '').replace(/\/$/, '');
     this.basePath = this.configService.get<string>('NEXTCLOUD_BASE_PATH', 'SalaPlena');
 
-    const username = this.configService.get<string>('NEXTCLOUD_SERVICE_USER', '');
-    const password = this.configService.get<string>('NEXTCLOUD_SERVICE_PASSWORD', '');
+    const username = this.configService.get<string>('SERVICE_ACCOUNT_USER', '');
+    const password = this.configService.get<string>('SERVICE_ACCOUNT_PASSWORD', '');
 
     if (!this.baseUrl || !username || !password) {
-      throw new Error('NEXTCLOUD_URL, NEXTCLOUD_SERVICE_USER y NEXTCLOUD_SERVICE_PASSWORD son requeridos en .env');
+      throw new Error('NEXTCLOUD_URL, SERVICE_ACCOUNT_USER y SERVICE_ACCOUNT_PASSWORD son requeridos en .env');
     }
 
     this.auth = { username, password };

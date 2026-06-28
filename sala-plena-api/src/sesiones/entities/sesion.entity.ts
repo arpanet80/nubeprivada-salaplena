@@ -76,6 +76,12 @@ export class Sesion {
   @Column({ type: 'text', name: 'whatsapp_mensaje', nullable: true })
   whatsappMensaje: string;
 
+  @Column({ type: 'int', name: 'archivos_subidos', default: 0 })
+  archivosSubidos: number;
+
+  @Column({ type: 'int', name: 'total_archivos', default: 0 })
+  totalArchivos: number;
+
   @Column({ type: 'text', nullable: true })
   notas: string;
 

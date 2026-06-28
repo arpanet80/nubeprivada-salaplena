@@ -192,6 +192,18 @@
             <i class="ki-duotone ki-information fs-5 me-1"><span class="path1"></span><span class="path2"></span></i>
             {{ progress()?.mensaje ?? 'Iniciando...' }}
           </div>
+          
+          <!-- INFO DE PESO TOTAL -->
+          <div class="d-flex align-items-center gap-2 mt-3 p-3 bg-light rounded">
+            <div class="symbol symbol-30px bg-light-primary rounded">
+              <i class="ki-duotone ki-file-up fs-3 text-primary"><span class="path1"></span><span class="path2"></span></i>
+            </div>
+            <div>
+              <div class="fw-bold text-gray-800">{{ selectedFiles().length }} archivo(s) - {{ formatBytes(totalSize()) }}</div>
+              <div class="text-gray-500 fs-7">Tamaño total a subir</div>
+            </div>
+          </div>
+          
           @if (progress()?.detalle) {
             <div class="text-gray-500 fs-7 mt-2 fst-italic">
               {{ progress()?.detalle }}

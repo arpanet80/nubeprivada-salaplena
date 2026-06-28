@@ -25,8 +25,11 @@ export class BackupService {
     this.smbHost = this.configService.get<string>('BACKUP_SMB_HOST', '10.51.15.91');
     this.smbShare = this.configService.get<string>('BACKUP_SMB_SHARE', 'SalaPlena');
     this.smbPath = this.configService.get<string>('BACKUP_SMB_PATH', '');
-    this.smbUsername = this.configService.get<string>('BACKUP_SMB_USERNAME', 'secdecamara.pts');
-    this.smbPassword = this.configService.get<string>('BACKUP_SMB_PASSWORD', 'Bolivia2026');
+
+    // CORREGIDO: Usar cuenta de servicio genérica compartida por Nextcloud y Backup
+    this.smbUsername = this.configService.get<string>('SERVICE_ACCOUNT_USER', '');
+    this.smbPassword = this.configService.get<string>('SERVICE_ACCOUNT_PASSWORD', '');
+
     this.smbDomain = this.configService.get<string>('BACKUP_SMB_DOMAIN', 'oep.net');
     this.devMock = this.parseBoolSafe(this.configService.get<string>('BACKUP_DEV_MOCK'), false);
 
@@ -187,7 +190,7 @@ export class BackupService {
     return new Promise((resolve, reject) => {
       // Formato: DOMAIN/user%password
       const authSpec = `${this.smbDomain}/${this.smbUsername}%${this.smbPassword}`;
-      
+
       const args = [
         shareUrl,
         '-U', authSpec,
