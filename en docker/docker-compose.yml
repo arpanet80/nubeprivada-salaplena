@@ -147,9 +147,9 @@ services:
     networks:
       - sala-plena-net
     environment:
-      API_URL: 'http://10.51.15.41:3011/'
-      API_URL_USER: 'http://10.51.15.41:3011/'
-      REPORTS_URL: 'http://10.51.15.110:8123/api/reports/'
+      API_URL: ${API_URL}
+      API_URL_USER: ${API_URL_USER}
+      REPORTS_URL: ${REPORTS_URL}
       DEBUG: "false"
       TZ: America/La_Paz
 

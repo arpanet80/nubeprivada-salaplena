@@ -110,12 +110,12 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 WORKDIR /app
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
+COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
+COPY --from=builder --chown=appuser:appgroup /app/package*.json ./
 
 RUN mkdir -p /app/uploads/temp /app/whatsapp-session /app/logs \
-    && chown -R appuser:appgroup /app
+    && chown -R appuser:appgroup /app/uploads /app/whatsapp-session /app/logs
 
 EXPOSE 3011
 

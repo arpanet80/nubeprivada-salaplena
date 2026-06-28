@@ -18,9 +18,6 @@ RUN npm ci && npm cache clean --force
 # Copiar código fuente
 COPY . .
 
-# Copiar env.js de producción (se sobreescribe en CI/CD si es necesario)
-COPY env.js src/assets/env.js 2>/dev/null || true
-
 # Build de producción
 RUN npm run build -- --configuration production
 
@@ -32,7 +29,7 @@ LABEL version="2.0"
 LABEL description="Sala Plena UI - Angular + Nginx"
 
 # Instalar utilidades
-RUN apk add --no-cache     curl     wget     tzdata     && rm -rf /var/cache/apk/*
+RUN apk add --no-cache     curl     wget     tzdata     gettext     && rm -rf /var/cache/apk/*
 
 # ── Zona horaria fija del sistema (Bolivia) ──
 # Afecta principalmente los timestamps en los logs de acceso de nginx.

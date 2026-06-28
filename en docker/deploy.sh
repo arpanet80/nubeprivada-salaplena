@@ -173,6 +173,20 @@ deploy() {
         sleep 5
     done
 
+    # Verificar que env.js se generó bien (sin placeholders ${...} sin sustituir)
+    log_info "Verificando env.js generado en el contenedor UI..."
+    ENV_JS_CONTENT=$(docker exec sala-plena-ui cat /usr/share/nginx/html/env.js 2>/dev/null || echo "")
+    if [ -z "${ENV_JS_CONTENT}" ]; then
+        log_error "No se pudo leer env.js dentro del contenedor sala-plena-ui"
+        exit 1
+    elif echo "${ENV_JS_CONTENT}" | grep -q '\${'; then
+        log_error "env.js tiene placeholders sin sustituir (envsubst no corrió bien):"
+        echo "${ENV_JS_CONTENT}"
+        exit 1
+    else
+        log_success "env.js generado correctamente con valores reales"
+    fi
+
     log_success "¡Despliegue completado exitosamente!"
 }
 
