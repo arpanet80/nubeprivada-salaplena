@@ -1,8 +1,8 @@
 import { Controller, Get, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RotationService } from './rotation.service';
-import { Auth } from 'src/auth/decorators/auth.decorator';
-import { Role } from 'src/auth/enums/rol.enum';
+import { Auth } from '../auth/decorators/auth.decorator';
+import { Role } from '../auth/enums/rol.enum';
 
 @ApiTags('Rotación')
 @ApiBearerAuth('JWT-auth')

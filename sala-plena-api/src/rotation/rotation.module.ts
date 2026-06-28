@@ -4,10 +4,10 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { RotationService } from './rotation.service';
 import { RotationController } from './rotation.controller';
 import { Rotacion } from './entities/rotacion.entity';
-import { BackupModule } from 'src/backup/backup.module';
-import { LoggerModule } from 'src/logger/logger.module';
-import { NextcloudModule } from 'src/nextcloud/nextcloud.module';
-import { SesionesModule } from 'src/sesiones/sesiones.module';
+import { BackupModule } from '../backup/backup.module';
+import { LoggerModule } from '../logger/logger.module';
+import { NextcloudModule } from '../nextcloud/nextcloud.module';
+import { SesionesModule } from '../sesiones/sesiones.module';
 
 @Module({
   imports: [
