@@ -131,4 +131,4 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
     NODE_ENV=production \
     TZ=America/La_Paz
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
