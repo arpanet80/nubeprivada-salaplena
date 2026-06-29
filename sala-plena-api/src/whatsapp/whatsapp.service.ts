@@ -92,6 +92,15 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
       this.loggerService.info('WhatsAppService', 'WhatsApp autenticado');
     });
 
+    // TEMPORAL: diagnóstico de carga interna (quitar después de resolver)
+    this.client.on('loading_screen', (percent, message) => {
+      this.loggerService.info('WhatsAppService', `Loading screen: ${percent}% - ${message}`);
+    });
+
+    this.client.on('change_state', (state) => {
+      this.loggerService.info('WhatsAppService', `Change state: ${state}`);
+    });
+
     // Evento: Listo
     this.client.on('ready', () => {
       this.isReady = true;

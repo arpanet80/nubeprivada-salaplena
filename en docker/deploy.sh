@@ -4,15 +4,6 @@
 # Servidor: 10.51.15.41 (Debian 12 + Docker)
 # ============================================================
 
-
-## ============================================================
-# USO DEL SCRIPT
-# ./deploy.sh deploy    # despliega (default si no pasas argumento)
-# ./deploy.sh status    # solo muestra el estado actual
-# ./deploy.sh logs api  # sigue logs en vivo de la API
-# ./deploy.sh logs app  # sigue logs en vivo del UI
-## ============================================================
-
 set -euo pipefail
 
 # Colores
@@ -28,7 +19,7 @@ API_IMAGE="${REGISTRY}/sala-plena-api:latest"
 UI_IMAGE="${REGISTRY}/sala-plena-ui:latest"
 COMPOSE_FILE="/home/dante/sala-plena/docker-compose.yml"
 ENV_FILE="/home/dante/sala-plena/.env"
-BACKUP_DIR="/opt/backups/sala-plena"
+BACKUP_DIR="/home/dante/backups/sala-plena"
 
 # Funciones
 log_info() {
@@ -56,9 +47,9 @@ check_prerequisites() {
         exit 1
     fi
 
-    # Verificar Docker Compose
-    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-        log_error "Docker Compose no está instalado"
+    # Verificar Docker Compose (plugin moderno, 'docker compose' con espacio)
+    if ! docker compose version &> /dev/null; then
+        log_error "Docker Compose (plugin) no está instalado"
         exit 1
     fi
 
@@ -131,7 +122,7 @@ deploy() {
 
     # Detener servicios actuales
     log_info "Deteniendo servicios actuales..."
-    docker-compose down --remove-orphans || docker compose down --remove-orphans || true
+    docker compose down --remove-orphans || true
 
     # Limpiar imágenes antiguas (mantener últimas 3 versiones)
     log_info "Limpiando imágenes antiguas..."
@@ -139,7 +130,7 @@ deploy() {
 
     # Iniciar servicios
     log_info "Iniciando servicios..."
-    docker-compose up -d || docker compose up -d
+    docker compose up -d
 
     # Esperar a que los servicios estén saludables
     log_info "Esperando healthchecks..."
@@ -153,7 +144,7 @@ deploy() {
         fi
         if [ $i -eq 12 ]; then
             log_error "API no respondió después de 60 segundos"
-            docker-compose logs api --tail=50
+            docker compose logs api --tail=50
             exit 1
         fi
         sleep 5
@@ -167,7 +158,7 @@ deploy() {
         fi
         if [ $i -eq 12 ]; then
             log_error "UI no respondió después de 60 segundos"
-            docker-compose logs app --tail=50
+            docker compose logs app --tail=50
             exit 1
         fi
         sleep 5
@@ -193,7 +184,7 @@ deploy() {
 show_status() {
     log_info "Estado de los servicios:"
     echo
-    docker-compose ps || docker compose ps
+    docker compose ps
     echo
     log_info "Uso de recursos:"
     docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
@@ -212,7 +203,7 @@ case "${1:-deploy}" in
         show_status
         ;;
     logs)
-        docker-compose logs -f "${2:-api}"
+        docker compose logs -f "${2:-api}"
         ;;
     rollback)
         log_info "Rollback a versión anterior..."

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # ============================================
   # BACKEND API - Sala Plena
@@ -11,6 +9,7 @@ services:
     ports:
       - "3011:3011"
     restart: unless-stopped
+    shm_size: '1gb'
     networks:
       - sala-plena-net
     environment:
@@ -182,9 +181,6 @@ networks:
   sala-plena-net:
     driver: bridge
     name: sala-plena-net
-    ipam:
-      config:
-        - subnet: 172.25.0.0/16
 
 # ============================================
 # VOLUMES
