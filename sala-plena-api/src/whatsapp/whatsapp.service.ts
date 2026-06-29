@@ -63,10 +63,8 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--disable-gpu',
       ],
       executablePath: this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH') || undefined,
     };
